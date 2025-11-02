@@ -1,0 +1,143 @@
+<div class="w-100 border-bottom pb-2 d-flex align-items-center justify-content-between">
+      <h4 class="m-0 fw-bold text-primary">Add Friend</h4>
+
+  <div class="m-0 p-0 my-auto cursor-pointer backHome" (click)="backHome()">
+    <i class="fa-solid fa-house p-0 m-0"></i>
+  </div>
+</div>
+
+<!-- 🔍 مربع البحث -->
+<div class="col-12 border-bottom py-2 m-0">
+  <input
+    type="text"
+    class="w-100 border-0 border-start border-3 bg-transparent p-2"
+    [(ngModel)]="name"
+    (keyup)="search()"
+    placeholder="Search by name..."
+    style="outline: none;"
+  />
+</div>
+
+<!-- 👥 قائمة الأصدقاء -->
+<div class="row py-4 m-0">
+  <div
+    class="col-lg-4 col-md-6 col-sm-12 mb-4 d-flex align-items-center justify-content-center"
+    *ngFor="let item of allUser"
+  >
+    <div class="card border-0 shadow-sm rounded-4 text-center w-100 py-3">
+      <!-- صورة المستخدم -->
+      <div
+        [style.backgroundImage]="'url(' + item?.profileImage + ')'"
+        class="userImg mx-auto rounded-circle position-relative mb-3"
+        style="width: 100px; height: 100px; background-size: cover; background-position: center;"
+      >
+        <div
+          class="position-absolute rounded-circle border border-white"
+          [ngClass]="{
+            'bg-success': item.isOnline,
+            'bg-secondary': !item.isOnline
+          }"
+          style="width: 14px; height: 14px; top: 5px; right: 5px;"
+        ></div>
+      </div>
+
+      <!-- معلومات المستخدم -->
+      <h5 class="mb-1">{{ item.userName }}</h5>
+      <p class="text-muted mb-2" style="font-size: 13px;">{{ item.time }}</p>
+
+      <div class="text-start px-3 mb-3">
+        <p class="m-0">
+          <i class="fa-solid fa-user-group me-1"></i>
+          {{ item.friends?.length || 0 }} friends
+        </p>
+        <p class="m-0">
+          <i class="fa-solid fa-users me-1"></i>
+          {{ item.friends?.length || 0 }} mutual friends
+        </p>
+      </div>
+
+      <!-- الأزرار -->
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="d-flex justify-content-center gap-2 px-3 mt-2">
+  <!-- 🟦 حالة: لسه مش أصدقاء -->
+  <button
+    *ngIf="getFriendStatus(item._id) === 'none'"
+    class="btn btn-primary btn-sm fw-bold col-6"
+    (click)="addFriend(item._id)"
+  >
+    Add Friend
+  </button>
+
+  <!-- 🟨 حالة: بعتله طلب -->
+  <button
+    *ngIf="getFriendStatus(item._id) === 'pending_sent'"
+    class="btn btn-outline-secondary btn-sm fw-bold col-6"
+    (click)="cancelRequest(item._id)"
+  >
+    Cancel Request
+  </button>
+
+  <!-- 🟩 حالة: هو اللي باعتلي طلب -->
+  <div
+    *ngIf="getFriendStatus(item._id) === 'pending_received'"
+    class="d-flex justify-content-center gap-2"
+  >
+    <button
+      class="btn btn-success btn-sm px-3 fw-semibold"
+      (click)="acceptRequest(item._id)"
+    >
+      Accept
+    </button>
+    <button
+      class="btn btn-outline-danger btn-sm px-3 fw-semibold"
+      (click)="rejectRequest(item._id)"
+    >
+      Decline
+    </button>
+  </div>
+
+  <!-- 🟩 حالة: أصدقاء بالفعل -->
+  <div
+    *ngIf="getFriendStatus(item._id) === 'friends'"
+    class="d-flex justify-content-center gap-2"
+  >
+    <button class="btn btn-danger btn-sm fw-bold col-5" (click)="blockUser(item._id)">
+      Block
+    </button>
+    <button class="btn btn-outline-primary btn-sm fw-bold col-6" disabled>
+      Friends
+    </button>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    </div>
+  </div>
+</div>

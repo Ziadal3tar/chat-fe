@@ -1,0 +1,22 @@
+.userImg{
+  width: 60px;
+  height: 60px;
+background-position: center center !important;
+background-size: cover !important;
+}
+.userImg {
+  transition: transform 0.2s ease-in-out;
+}
+.userImg:hover {
+  transform: scale(1.05);
+}
+
+.card {
+  transition: all 0.3s ease;
+}
+.card:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+}
+.cursor-pointer {
+  cursor: pointer;
+}

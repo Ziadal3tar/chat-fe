@@ -1,0 +1,57 @@
+.profile-container {
+  background: var(--bs-light);
+  border-radius: 1rem;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  color: #333;
+
+  .user-img {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background-position: center center;
+    background-size: cover;
+    position: relative;
+    transition: 0.3s ease-in-out;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0);
+      color: white;
+      opacity: 0;
+      transition: 0.3s ease-in-out;
+      border-radius: 50%;
+    }
+
+    .edit-icon {
+      font-size: 1.4rem;
+      transition: 0.3s;
+    }
+
+    &:hover .overlay {
+      background: rgba(0, 0, 0, 0.5);
+      opacity: 1;
+      cursor: pointer;
+    }
+  }
+
+  button {
+    transition: 0.2s ease-in-out;
+    &:hover {
+      transform: scale(1.05);
+    }
+  }
+
+  @media (max-width: 768px) {
+    h4 {
+      font-size: 1.25rem;
+    }
+    .user-img {
+      width: 120px;
+      height: 120px;
+    }
+  }
+}

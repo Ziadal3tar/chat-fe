@@ -1,0 +1,35 @@
+<div class="settings-container row vh-100 m-0 d-flex ">
+  <div class="l col-md-3 col-12 d-md-flex d-none">
+    <aside class="sidebar col-12 d-none d-md-flex flex-column align-items-start p-3">
+      <!-- <h4 class="text-center w-100 fw-bold mb-4">Settings</h4> -->
+          <h4 class="m-0 fw-bold text-primary">Settings</h4>
+
+      <ng-container *ngFor="let item of menuItems">
+        <p class="menu-item w-100 text-start my-2 p-2 rounded-3 ps-3" (click)="setSection(item.section)"
+          [ngClass]="{'active': currentSection === item.section}">
+          <i [class]="item.icon + ' me-2'"></i> {{ item.label }}
+        </p>
+      </ng-container>
+    </aside>
+  </div>
+  <div class="r  col-md-9 col-12">
+    <main class="main-content row m-0 col-12 d-flex justify-content-center align-items-start p-3"
+      style="overflow-y: auto; height: 100%;">
+      <app-all-setting *ngIf="currentSection === 'setting'"></app-all-setting>
+      <app-profile *ngIf="currentSection === 'profile'"></app-profile>
+      <app-friend *ngIf="currentSection === 'friend'"></app-friend>
+      <app-add-friend *ngIf="currentSection === 'addFriend'"></app-add-friend>
+      <app-plans *ngIf="currentSection === 'plans'"></app-plans>
+      <app-stars *ngIf="currentSection === 'stars'"></app-stars>
+    </main>
+  </div>
+  <nav
+    class="bottom-nav d-md-none bg-main py-2 vw-100 position-fixed bottom-0 start-0 end-0 d-flex align-items-center justify-content-around shadow-lg">
+    <i class="fa-solid fa-user-group" (click)="setSection('friend')"></i>
+    <i class="fa-solid fa-plus" (click)="setSection('addFriend')"></i>
+    <i class="fa-solid fa-gear" (click)="setSection('setting')"></i>
+    <i class="fa-solid fa-list-check" (click)="setSection('plans')"></i>
+    <i class="fa-solid fa-star" (click)="setSection('stars')"></i>
+    <i class="fa-solid fa-user" (click)="setSection('profile')"></i>
+  </nav>
+</div>

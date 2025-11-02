@@ -1,0 +1,165 @@
+.arabic,
+i,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.chatName {
+  color: var(--color) !important;
+}
+
+.userImg {
+  width: 45px;
+  height: 45px;
+  background-position: center center !important;
+  background-size: cover !important;
+}
+
+input {
+  outline: none !important;
+}
+
+.me {
+  background-color: #154638;
+  color: #ffffff;
+  padding: 5px 15px;
+  border-radius: 50px;
+}
+
+.bgcolor {
+  background-color: var(--bgcolor) !important;
+}
+
+.color {
+  color: var(--color) !important; // color: red !important; }
+}
+
+.other {
+  background-color: #ffffff;
+  color: #000000;
+  padding: 5px 15px;
+  border-radius: 50px;
+}
+
+#dropdownBasic1::after {
+  display: none !important;
+}
+
+@media (max-width: 991px) {
+  .chat {
+    display: none !important;
+  }
+
+  .friend {
+    display: none !important;
+  }
+}
+
+@media (max-width: 550px) {
+  .friend {
+    width: 100% !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0px !important;
+  }
+
+  .chat {
+    width: 100% !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+.chat-container {
+  position: relative;
+  height: 84%;
+  overflow-y: auto;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 10px;
+  // filter: invert(1);
+
+
+
+}
+
+.message-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.message-text {
+  display: inline-block;
+  max-width: 100%;
+  word-wrap: break-word;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.my-message {
+  background-color: #0078ff;
+  color: white;
+  align-self: flex-end;
+  border-top-right-radius: 0 !important;
+}
+
+.other-message {
+  background-color: #000000;
+  color: #ffffff;
+  align-self: flex-start;
+  border-top-left-radius: 0!important;
+}
+
+.message-time {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.text-center span {
+  background-color: #f1f0f0;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.userImg {
+  width: 45px;
+  height: 45px;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  border-radius: 50%;
+}
+
+.friend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #dee2e6;
+  padding: 0.75rem 1rem;
+  color: #000;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.friend-item:hover {
+  background-color: #f8f9fa;
+}
+
+.search-input {
+  border-radius: 50px 0 0 50px;
+  outline: none;
+}
+
+.search-icon {
+  border-radius: 0 50px 50px 0;
+  width: 10%;
+}
+
+.cursorPointer {
+  cursor: pointer;
+}
