@@ -3,6 +3,9 @@ import { filter, Subject, Subscription, take, takeUntil } from 'rxjs';
 import { ShareFunctionsService } from './../../services/share-functions.service';
 import { UserService } from './../../services/user.service';
 import { SocketService } from 'src/app/services/socket.service';
+
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
@@ -23,6 +26,17 @@ export class HomeComponent implements OnInit {
   setting: any;
   private destroy$ = new Subject<void>();
 
+  filePreview: any | null = null;
+  fileType: 'image' | 'video' | 'pdf' | null = null;
+  fileName: string | null = null;
+  selectedFile: File | null = null;
+
+  videoUrl: any | null = null;
+  videoPreview: any | null = null;
+  videoDuration: number = 0;
+  trimStart: number = 0;
+  trimEnd: number = 0;
+
   morning = 'url(./assets/img/white-abstract-background_23-2148817571.jpg)';
   night = 'url(./assets/img/6222603.jpg)';
   friendStyle = '';
@@ -38,12 +52,14 @@ export class HomeComponent implements OnInit {
   nameChat: any;
 
   audio = new Audio();
+  safeVideoPreview: SafeUrl | null = null;
 
   constructor(
     private elem: ElementRef,
     private shareFunctions: ShareFunctionsService,
     private socketService: SocketService,
-    private UserService: UserService
+    private UserService: UserService,
+    private sanitizer: DomSanitizer
   ) {
     this.clickEventSubscription = this.shareFunctions
       .getClickEvent()
@@ -56,38 +72,39 @@ export class HomeComponent implements OnInit {
   ngOnInit(): void {
     this.audio.src = '../../../assets/audio/ttn.mp3';
 
-  this.UserService.user$
-    .pipe(
-      takeUntil(this.destroy$),
-      filter((data) => !!data),
-      take(1)
-    )
-    .subscribe((data: any) => {
-      this.userData = data;
-      this.loadOnlineFriends();
-      this.sortChats(data.chats);
+    this.UserService.user$
+      .pipe(
+        takeUntil(this.destroy$),
+        filter((data) => !!data),
+        take(1)
+      )
+      .subscribe((data: any) => {
+        this.userData = data;
+        this.loadOnlineFriends();
+        this.sortChats(data.chats);
 
-      // 🟢 اتصل بالسيرفر
-      this.socketService.connect(this.userData._id);
+        // 🟢 اتصل بالسيرفر
+        this.socketService.connect(this.userData._id);
+this.socketService.emit('join', this.userData._id);
+        // ✅ بعد الاتصال، فعّل الاستماع للأحداث
+        setTimeout(() => {
+          this.initializeSocketListeners();
+        }, 500); // تأخير بسيط لتأكيد الاتصال
+      });
+  }
+  initializeSocketListeners() {
+    this.socketService.listen('receiveMessage').subscribe((data: any) => {
+      console.log('hhhhhhhh');
 
-      // ✅ بعد الاتصال، فعّل الاستماع للأحداث
-      setTimeout(() => {
-        this.initializeSocketListeners();
-      }, 500); // تأخير بسيط لتأكيد الاتصال
+      this.UserService.getUserData();
+      this.handleIncomingMessage(data);
+      setTimeout(() => this.scrollToBottom(true), 0);
+    });
+
+    this.socketService.listen('messagesRead').subscribe((chatId: any) => {
+      this.theChat.forEach((msg: any) => (msg.isRead = true));
     });
   }
-initializeSocketListeners() {
-  this.socketService.listen('receiveMessage').subscribe((data: any) => {
-    this.UserService.getUserData();
-    this.handleIncomingMessage(data);
-    setTimeout(() => this.scrollToBottom(true), 0);
-  });
-
-  this.socketService.listen('messagesRead').subscribe((chatId: any) => {
-    this.theChat.forEach((msg: any) => (msg.isRead = true));
-  });
-
-}
 
   ngOnDestroy() {
     this.destroy$.next();
@@ -145,6 +162,8 @@ initializeSocketListeners() {
       let index = this.myChats.findIndex(
         (chat: any) => chat._id === data.chatId
       );
+      console.log(this.myChats[index]);
+
       this.myChats[index].unreadCount++;
     }
   }
@@ -152,15 +171,17 @@ initializeSocketListeners() {
   /** 🟢 تحميل الأصدقاء المتصلين */
   loadOnlineFriends() {
     if (!this.userData?._id) return;
-    this.UserService
-      .getOnlineFriends({ userId: this.userData._id })
-      .subscribe((res: any) => {
+    this.UserService.getOnlineFriends({ userId: this.userData._id }).subscribe(
+      (res: any) => {
         this.onlineFriends = res.onlineFriends;
-      });
+      }
+    );
   }
 
   sortChats(chats: any) {
+    console.log(chats);
     this.myChats = chats
+
       .map((chat: any) => ({
         ...chat,
         participants: chat.participants.filter(
@@ -185,11 +206,11 @@ initializeSocketListeners() {
 
   getMyChats() {
     if (!this.userData?._id) return;
-    this.UserService
-      .getMyChats({ userId: this.userData._id })
-      .subscribe((res: any) => {
+    this.UserService.getMyChats({ userId: this.userData._id }).subscribe(
+      (res: any) => {
         this.myChats = res.chats;
-      });
+      }
+    );
   }
 
   openChat(i: number, data: any[]) {
@@ -197,14 +218,17 @@ initializeSocketListeners() {
 
     const myId = this.userData._id;
     const friendData = this.filteredFriends.length
-      ? data[i]
-      : data[i].participants[0];
+      ? data[i] // من البحث
+      : data[i].participants[0]; // من الشاتات القديمة
+
     this.theOpenedChatId = friendData;
 
     this.UserService.getChat({ myId, friendId: friendData._id }).subscribe({
       next: (res: any) => {
         const chatData = res?.chat?.chat;
+
         if (chatData) {
+          // ✅ لو في محادثة سابقة
           this.theChat = chatData.messages.map(
             (msg: any, index: number, arr: any[]) => ({
               ...msg,
@@ -220,14 +244,18 @@ initializeSocketListeners() {
             friendId: friendData._id,
           });
           this.markMessagesAsRead();
-
-          this.chat = '';
-          this.searchStyle = 'd-none';
-          this.friend = 'friend';
-          this.chatItem = '';
-          this.nameChat = friendData.userName;
-          this.imgChat = friendData.profileImage;
+        } else {
+          // ✅ لو مافيش محادثة سابقة (من البحث مثلاً)
+          this.theChat = [];
         }
+
+        // ✅ في جميع الحالات، افتح واجهة المحادثة
+        this.chat = '';
+        this.searchStyle = 'd-none';
+        this.friend = 'friend';
+        this.chatItem = '';
+        this.nameChat = friendData.userName;
+        this.imgChat = friendData.profileImage;
       },
       error: (err) => console.error('Error loading chat:', err),
     });
@@ -236,27 +264,25 @@ initializeSocketListeners() {
   markMessagesAsRead() {
     console.log('fg');
 
-    this.UserService
-      .markMessagesAsRead({
-        chatId: this.theOpenedChatId?._id,
-        userId: this.userData._id,
-      })
-      .subscribe({
-        next: (res: any) => {
-          console.log(res);
+    this.UserService.markMessagesAsRead({
+      chatId: this.theOpenedChatId?._id,
+      userId: this.userData._id,
+    }).subscribe({
+      next: (res: any) => {
+        console.log(res);
 
-          if (res.success) {
-            const chatIndex = this.myChats.findIndex(
-              (c: any) => c.participants[0]._id === this.theOpenedChatId._id
-            );
+        if (res.success) {
+          const chatIndex = this.myChats.findIndex(
+            (c: any) => c.participants[0]._id === this.theOpenedChatId._id
+          );
 
-            if (chatIndex !== -1) {
-              this.myChats[chatIndex].unreadCount = 0;
-            }
+          if (chatIndex !== -1) {
+            this.myChats[chatIndex].unreadCount = 0;
           }
-        },
-        error: (err) => console.error('Error marking messages as read:', err),
-      });
+        }
+      },
+      error: (err) => console.error('Error marking messages as read:', err),
+    });
   }
 
   scrollToBottom(force: boolean = false): void {
@@ -292,52 +318,246 @@ initializeSocketListeners() {
     this.friend = isSearchOpen ? '' : 'friend';
   }
 
-  sendMessage(): void {
+  sendMessage() {
     const content = this.message.trim();
-    if (!content) return;
 
-    const now = new Date();
-    const messageData = {
-      sendBy: this.userData._id,
-      sendTo: this.theOpenedChatId._id,
-      content,
-      date: now.toLocaleDateString('en-GB'),
-      time: now.toLocaleTimeString('en-US', { hour12: false }),
-    };
+    if (!content && !this.selectedFile) return;
 
-    this.theChat.push({
-      sendBy: { _id: this.userData._id },
-      sendTo: { _id: this.theOpenedChatId._id },
-      content,
-      date: now.toLocaleDateString('en-GB'),
-      time: now.toLocaleTimeString('en-US', { hour12: false }),
-      isRead: false,
-    });
-    this.message = '';
-    const chatIndex = this.myChats.findIndex(
-      (chat: any) => chat.participants[0]._id === this.theOpenedChatId._id
+    const formData = new FormData();
+    formData.append('sendBy', this.userData._id);
+    formData.append('sendTo', this.theOpenedChatId._id);
+    formData.append('content', content || '');
+    formData.append('date', new Date().toLocaleDateString('en-GB'));
+    formData.append(
+      'time',
+      new Date().toLocaleTimeString('en-US', { hour12: false })
     );
-    if (chatIndex !== -1) {
-      const chat = this.myChats[chatIndex];
-      chat.lastMessage = messageData;
-      this.myChats.splice(chatIndex, 1);
-      this.myChats.unshift(chat);
+
+    if (this.selectedFile) {
+      formData.append('file', this.selectedFile);
     }
 
-    this.UserService.initChat(messageData).subscribe({
+    this.UserService.initChat(formData).subscribe({
       next: (res: any) => {
-        if (res?.message && res?.chatId) {
-          const chatIndex = this.myChats.findIndex(
-            (chat: any) => chat._id === res.chatId
-          );
-          if (chatIndex !== -1) {
-            this.myChats[chatIndex].lastMessage = res.message;
-          }
+        console.log('✅ Message sent:', res);
+        this.filePreview = null;
+        this.selectedFile = null;
+        this.cancelPreview()
+        this.message = '';
+        const newMsg = res.message;
+      setTimeout(() => this.scrollToBottom(true), 0);
+
+        // لو sendBy جاي ID نصي نحوله لكائن زي الباقي
+        if (typeof newMsg.sendBy === 'string') {
+          newMsg.sendBy = { _id: newMsg.sendBy };
         }
+
+        if (typeof newMsg.sendTo === 'string') {
+          newMsg.sendTo = { _id: newMsg.sendTo };
+        }
+
+        this.theChat.push(newMsg);
       },
-      error: (err) => console.error('Error saving message:', err),
+      error: (err: any) => console.error('❌ Error sending message:', err),
     });
-    setTimeout(() => this.scrollToBottom(true), 0);
+  }
+
+  // متغير لتخزين رابط blob الأصلي للفيديو أثناء المعالجة
+  videoBlobUrl: string | null = null;
+
+  async onFileSelected(event: any) {
+    this.cancelPreview()
+    const file = event.target.files[0];
+    if (!file) return;
+
+    this.selectedFile = file;
+    this.fileName = file.name;
+    const fileType = file.type;
+
+    // 📸 الصور
+    if (fileType.startsWith('image/')) {
+      this.fileType = 'image';
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.filePreview = this.sanitizer.bypassSecurityTrustUrl(
+          reader.result as string
+        );
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // 🎥 الفيديوهات
+    else if (fileType.startsWith('video/')) {
+      const blobUrl = URL.createObjectURL(file);
+      this.videoBlobUrl = blobUrl; // خزّن الرابط الأصلي
+      const video = document.createElement('video');
+      video.src = blobUrl;
+
+      video.onloadedmetadata = () => {
+        this.videoDuration = video.duration;
+
+        if (video.duration > 600) {
+          alert('❌ لا يمكن اختيار فيديو أطول من 10 دقائق.');
+          URL.revokeObjectURL(blobUrl);
+          this.videoBlobUrl = null;
+          return;
+        }
+
+        this.fileType = 'video';
+
+        if (video.duration > 30) {
+          // فيديو طويل → قص
+          this.videoUrl = this.sanitizer.bypassSecurityTrustUrl(blobUrl);
+          this.videoPreview = null;
+          this.filePreview = null;
+          this.trimStart = 0;
+          this.trimEnd = video.duration;
+        } else {
+          // فيديو قصير → عرض مباشرة
+          const safeBlob = this.sanitizer.bypassSecurityTrustUrl(blobUrl);
+          this.videoUrl = safeBlob;
+          this.videoPreview = safeBlob;
+          this.filePreview = safeBlob;
+        }
+      };
+    }
+
+    // 📄 PDF
+    else if (fileType === 'application/pdf') {
+      this.fileType = 'pdf';
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.filePreview = this.sanitizer.bypassSecurityTrustUrl(
+          reader.result as string
+        );
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ⚠️ غير مسموح
+    else {
+      alert('❌ Only images, short videos, or PDFs are allowed!');
+      return;
+    }
+  }
+
+  async confirmTrim() {
+    if (!this.videoBlobUrl) {
+      console.error('❌ رابط الفيديو الأصلي غير موجود!');
+      return;
+    }
+
+    const video = document.createElement('video');
+    video.src = this.videoBlobUrl;
+
+    await new Promise<void>(
+      (resolve) => (video.onloadeddata = () => resolve())
+    );
+
+    const duration = Math.min(
+      30,
+      (this.trimEnd ?? this.trimStart + 30) - this.trimStart
+    );
+    const trimmedBlob = await this.trimVideoFrontend(
+      video,
+      this.trimStart,
+      duration
+    );
+
+    const blobUrl = URL.createObjectURL(trimmedBlob);
+    this.videoBlobUrl = blobUrl; // رابط الفيديو المقتص الجديد
+    const safeBlob = this.sanitizer.bypassSecurityTrustUrl(blobUrl);
+
+    // 🎬 خزن المعاينة للعرض
+    this.videoPreview = safeBlob;
+    this.filePreview = safeBlob;
+
+    // 📦 خزن الملف النهائي لإرساله لاحقًا
+    this.selectedFile = new File([trimmedBlob], 'trimmedVideo.webm', {
+      type: 'video/webm',
+    });
+
+    // 🧹 نظف القديم
+    this.videoUrl = null;
+    this.videoDuration = 0;
+
+    console.log(
+      `✅ تم قص الفيديو من ${this.trimStart} إلى ${this.trimStart + duration}`
+    );
+  }
+
+  async trimVideoFrontend(
+    video: HTMLVideoElement,
+    start: number,
+    duration: number
+  ): Promise<Blob> {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      const recordedChunks: BlobPart[] = [];
+      const stream = canvas.captureStream();
+      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+
+      video.currentTime = start;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        resolve(blob);
+      };
+
+      video.onloadeddata = () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      };
+
+      recorder.start();
+      video.muted = true;
+      video.play();
+
+      const drawFrame = () => {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        if (video.currentTime < start + duration && !video.ended) {
+          requestAnimationFrame(drawFrame);
+        }
+      };
+
+      drawFrame();
+
+      setTimeout(() => {
+        recorder.stop();
+        video.pause();
+video.muted = false;
+      }, duration * 1000);
+    });
+  }
+
+  cancelPreview() {
+    try {
+      if (this.videoBlobUrl) URL.revokeObjectURL(this.videoBlobUrl);
+      this.videoBlobUrl = null;
+
+      if (this.videoUrl && (this.videoUrl as string).startsWith('blob:'))
+        URL.revokeObjectURL(this.videoUrl as string);
+      if (
+        this.videoPreview &&
+        (this.videoPreview as string).startsWith('blob:')
+      )
+        URL.revokeObjectURL(this.videoPreview as string);
+      if (this.filePreview && (this.filePreview as string).startsWith('blob:'))
+        URL.revokeObjectURL(this.filePreview as string);
+    } catch {}
+
+    this.videoUrl = null;
+    this.videoPreview = null;
+    this.filePreview = null;
+    this.fileType = null;
+    this.selectedFile = null;
+    this.fileName = null;
+    this.videoDuration = 0;
   }
 
   /** 🔍 بحث عن الأصدقاء */
@@ -415,5 +635,15 @@ initializeSocketListeners() {
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12 || 12;
     return `${hours}:${m} ${ampm}`;
+  }
+
+  mediaViewer = { open: false, url: '', type: '' };
+
+  openMediaViewer(url: string, type: string) {
+    this.mediaViewer = { open: true, url, type };
+  }
+
+  closeMediaViewer() {
+    this.mediaViewer.open = false;
   }
 }

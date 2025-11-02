@@ -3,8 +3,7 @@
   <div class="d-flex align-items-center justify-content-center">
     <div class="english row col-12 vh-100 d-flex align-items-center justify-content-center">
       <!-- 🔍 Search Section -->
-      <div [ngClass]="searchStyle"
-        class="col-lg-8 col-sm-12 ">
+      <div [ngClass]="searchStyle" class="col-lg-8 col-sm-12 ">
         <app-search [ngClass]="searchStyle"></app-search>
       </div> <!-- 💬 Chat Section -->
 
@@ -70,6 +69,24 @@
                   {{ message?.content }}
 
                 </p>
+
+
+
+                <img *ngIf="message.fileType === 'image'" [src]="message.fileUrl" class="message-image"
+                  (click)="openMediaViewer(message.fileUrl, 'image')" />
+
+                <!-- PDF -->
+                <div *ngIf="message.fileType === 'pdf'" class="pdf-message">
+                  <i class="fa fa-file-pdf"></i>
+                  <a [href]="message.fileUrl" download target="_blank">Download PDF</a>
+                </div>
+
+                <!-- فيديو -->
+                <video *ngIf="message.fileType === 'video'" [src]="message.fileUrl" controls class="message-video"
+                  (click)="openMediaViewer(message.fileUrl, 'video')"></video>
+
+
+
                 <span class="message-time text-light small mt-1 me-1">
                   <i *ngIf="message.sendBy._id === userData._id" class="fa"
                     [ngClass]="message.isRead?'fa-check-double text-primary':'fa-check'"></i>
@@ -83,26 +100,101 @@
 
 
         <!-- Chat Input -->
-        <div [ngClass]="chatItem"
-          class="bgcolor col-12 bg-light rounded-bottom d-flex align-items-center justify-content-center"
-          style="height: 8%;">
-          <div class="fs-4 col-md-1 col-2 d-flex align-items-center justify-content-center">
+        <div *ngIf="theOpenedChatId"
+          class="chat-input-container d-flex align-items-center justify-content-between px-3 py-2 border-top bg-light">
+          <!-- 😊 Emoji -->
+          <button class="icon-btn">
             <i class="fa-solid fa-face-smile"></i>
+          </button>
+
+          <!-- 📎 Attach File -->
+          <div class="position-relative">
+            <input id="fileInput" type="file" (change)="onFileSelected($event)" class="d-none" #fileInput />
+            <button class="icon-btn" (click)="fileInput.click()">
+              <i class="fa-solid fa-paperclip"></i>
+            </button>
           </div>
-          <div class="fs-4 col-md-1 col-2 d-flex align-items-center justify-content-center">
-            <i class="fa-solid fa-paperclip"></i>
-          </div>
-          <div class="col-md-9 col-6 d-flex align-items-center">
-            <input type="text" [(ngModel)]="message" placeholder="Your message"
-              class="col-11 rounded-5 bg-white border-0 p-2 ps-3">
-            <div class="col-1 text-center p-2 bg-white rounded-5" (click)="sendMessage()">
-              <i class="fa-solid fa-paper-plane cursorPointer"></i>
-            </div>
-          </div>
-          <div class="fs-4 col-md-1 col-2 d-flex align-items-center justify-content-center">
-            <i class="fa-solid fa-microphone text-black"></i>
-          </div>
+
+          <!-- ✏️ Input + Preview -->
+   <div class="flex-grow-1 mx-2 position-relative">
+
+  <!-- 🎥 Section: قص الفيديو -->
+  <div *ngIf="videoUrl && videoDuration > 30 && !videoPreview" class="preview-box text-center p-2">
+    <video [src]="videoUrl" controls class="rounded w-100 mb-2"></video>
+
+    <div class="range-container mt-3">
+      <label class="form-label small fw-bold mb-1">حدد الجزء الذي تريد الاحتفاظ به</label>
+
+      <!-- شريطان لتحديد البداية والنهاية -->
+      <div class="position-relative">
+        <input type="range" [(ngModel)]="trimEnd" [max]="videoDuration" step="0.1"
+          class="form-range range-end position-absolute top-0 start-0 w-100" />
+
+        <input type="range" [(ngModel)]="trimStart" [max]="videoDuration" step="0.1"
+          class="form-range range-start" />
+      </div>
+
+      <p class="small text-muted mt-1">
+        🎞️ من {{ trimStart | number:'1.0-1' }} إلى {{ trimEnd | number:'1.0-1' }} ثانية
+        (المدة: {{ trimEnd - trimStart | number:'1.0-1' }} ث)
+      </p>
+    <div class="d-flex justify-content-center gap-2 mt-2">
+
+      <button class="btn btn-primary btn-sm mt-2"
+        [disabled]="trimEnd - trimStart > 30 || trimEnd <= trimStart"
+        (click)="confirmTrim()">
+        قص المقطع
+      </button>
+      <button class="btn btn-danger btn-sm mt-2" (click)="cancelPreview()">إلغاء</button>
+  </div>
+
+      <p *ngIf="trimEnd - trimStart > 30" class="text-danger small mt-1">
+        ⚠️ المقطع يجب ألا يتجاوز 30 ثانية
+      </p>
+    </div>
+  </div>
+
+  <!-- 🎬 Section: عرض المقطع النهائي -->
+  <div *ngIf="videoPreview" class="preview-box text-center p-2">
+    <h6 class="small mb-2">🎬 المقطع النهائي:</h6>
+    <video [src]="videoPreview" controls preload="metadata" class="rounded w-100"></video>
+    <div class="d-flex justify-content-center gap-2 mt-2">
+      <button class="btn btn-success btn-sm" (click)="sendMessage()">إرسال</button>
+      <button class="btn btn-danger btn-sm" (click)="cancelPreview()">إلغاء</button>
+    </div>
+  </div>
+
+  <!-- 🖼️ Image or PDF Preview -->
+  <div *ngIf="filePreview && fileType !== 'video'" class="preview-box text-center p-2">
+    <ng-container [ngSwitch]="fileType">
+      <img *ngSwitchCase="'image'" [src]="filePreview" class="w-100 rounded mb-2" />
+      <p *ngSwitchCase="'pdf'" class="text-dark fw-bold">📄 {{ fileName }}</p>
+    </ng-container>
+    <div class="d-flex justify-content-center gap-2 mt-2">
+      <button class="btn btn-success btn-sm" (click)="sendMessage()">إرسال</button>
+      <button class="btn btn-danger btn-sm" (click)="cancelPreview()">إلغاء</button>
+    </div>
+  </div>
+
+  <!-- ✍️ Message Input -->
+  <div class="input-group">
+    <input type="text" [(ngModel)]="message" placeholder="اكتب رسالتك..."
+      class="form-control rounded-pill border-0 shadow-sm" />
+    <button [disabled]="!message.trim() || selectedFile" class="btn send-btn" (click)="sendMessage()">
+      <i class="fa-solid fa-paper-plane"></i>
+    </button>
+  </div>
+</div>
+
+
+
+          <!-- 🎙️ Mic -->
+          <button class="icon-btn">
+            <i class="fa-solid fa-microphone"></i>
+          </button>
         </div>
+
+
       </div>
 
 
@@ -179,8 +271,8 @@
                   [style.background-repeat]="'no-repeat'"></div>
               </div>
 
-<div *ngIf="(myChats.length >= 0 && searchTerm?.trim()?.length == 0 && filteredFriends.length == 0)"
-              class="text-center text-muted py-4"> لا يوجد محادثات لعرضها </div>
+              <div *ngIf="(myChats.length >= 0 && searchTerm?.trim()?.length == 0 && filteredFriends.length == 0)"
+                class="text-center text-muted py-4"> لا يوجد محادثات لعرضها </div>
 
 
             </ng-container>
@@ -191,4 +283,9 @@
         </div>
       </div>
     </div>
+  </div>
+  <!-- داخل نفس الكومبوننت -->
+  <div *ngIf="mediaViewer.open" class="media-viewer" (click)="closeMediaViewer()">
+    <img *ngIf="mediaViewer.type === 'image'" [src]="mediaViewer.url" />
+    <video *ngIf="mediaViewer.type === 'video'" [src]="mediaViewer.url" controls autoplay></video>
   </div>

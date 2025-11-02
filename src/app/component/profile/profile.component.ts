@@ -4,46 +4,62 @@ import { Component, OnInit } from '@angular/core';
 @Component({
   selector: 'app-profile',
   templateUrl: './profile.component.html',
-  styleUrls: ['./profile.component.scss']
+  styleUrls: ['./profile.component.scss'],
 })
 export class ProfileComponent implements OnInit {
-userData:any
-  constructor(private ShareFunctionsService :ShareFunctionsService,
+  userData: any;
+  selectedImage: File | null = null;
+  isEditing = false;
+  isLoading = false;
 
-    private UserService: UserService,
+  constructor(
+    private ShareFunctionsService: ShareFunctionsService,
 
-  ) { }
-isEditing = false;
+    private userService: UserService
+  ) {}
 
-toggleEdit() {
-  this.isEditing = !this.isEditing;
-}
   ngOnInit(): void {
-     this.UserService.user$.subscribe((data:any) => {
-    this.userData = data;
-
-  });
-  }
-
-  backHome(){
-    this.ShareFunctionsService.sendClickEvent()
+    // جلب بيانات المستخدم عند تحميل الصفحة
+    this.userService.user$.subscribe((data: any) => {
+      if (data) {
+        this.userData = data;
       }
-
-
-      selectedFile: File | null = null;
-
-onFileSelected(event: any) {
-  this.selectedFile = event.target.files[0];
-}
-
-saveChanges() {
-  if (this.selectedFile) {
-    // ارفع الصورة لـ Cloudinary أو السيرفر
-    console.log('Uploading new profile image...');
+    });
   }
 
-  console.log('Saving new data:', this.userData);
-  this.isEditing = false;
-}
+  toggleEdit() {
+    this.isEditing = !this.isEditing;
+  }
+  backHome() {
+    this.ShareFunctionsService.sendClickEvent();
+  }
 
+  onFileSelected(event: any): void {
+    this.selectedImage = event.target.files[0];
+  }
+  updateProfile(): void {
+    if (!this.userData?.userName && !this.selectedImage) return;
+
+    this.isLoading = true;
+    const formData = new FormData();
+    formData.append('userId', this.userData._id);
+    formData.append('userName', this.userData.userName || '');
+
+    if (this.selectedImage) {
+      formData.append('profileImage', this.selectedImage);
+    }
+
+    this.userService.updateProfile(formData).subscribe({
+      next: (res: any) => {
+        console.log('✅ Profile updated:', res);
+        this.userService.getUserData(); // تحديث بيانات المستخدم
+        this.isEditing = false;
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('❌ Update error:', err);
+        this.isLoading = false;
+      },
+    });
+  }
 }

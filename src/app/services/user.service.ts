@@ -9,29 +9,15 @@ export class UserService {
   private baseUrl = 'http://localhost:3000/api';
 
   private userSubject = new BehaviorSubject<any>(null);
-  user$:any = this.userSubject.asObservable();
+  user$: any = this.userSubject.asObservable();
 
   constructor(private http: HttpClient) {
     const token = localStorage.getItem('token');
     if (token) this.getUserData();
   }
- updateUser(user: any) {
+  updateUser(user: any) {
     this.userSubject.next(user);
   }
-
-
-// updateUser(data: any) {
-//     this.userSubject.next(data);
-//   }
-
-
-
-
-
-
-
-
-
 
   register(user: any): any {
     return this.http.post(`${this.baseUrl}/auth/register`, user);
@@ -58,12 +44,12 @@ export class UserService {
       },
     });
   }
- 
+
   getUserById(id: any): any {
     return this.http.get(`${this.baseUrl}/user/getUserById/${id}`);
   }
   initChat(data: any) {
-    return this.http.post(`${this.baseUrl}/chat/initChat`, data);
+    return this.http.post(`${this.baseUrl}/chat/send`, data);
   }
   getChat(data: any) {
     return this.http.post(`${this.baseUrl}/chat/getChat`, data);
@@ -71,17 +57,22 @@ export class UserService {
   getMyChats(data: any): any {
     return this.http.post(`${this.baseUrl}/chat/getMyChats`, data);
   }
- markOneMessagesAsRead(messageId: any) {
-    return this.http.get(`${this.baseUrl}/chat/markOneMessagesAsRead/${messageId}`);
+  markOneMessagesAsRead(messageId: any) {
+    return this.http.get(
+      `${this.baseUrl}/chat/markOneMessagesAsRead/${messageId}`
+    );
   }
-    getOnlineFriends(data: any) {
+  getOnlineFriends(data: any) {
     return this.http.post(`${this.baseUrl}/user/getOnlineFriends`, data);
   }
   markMessagesAsRead(data: any) {
     return this.http.post(`${this.baseUrl}/chat/markMessagesAsRead`, data);
   }
- logout() {
+  updateProfile(formData: FormData) {
+    return this.http.post(`${this.baseUrl}/user/update`, formData);
+  }
+  logout() {
     localStorage.removeItem('token');
-  this.userSubject.next(null);
+    this.userSubject.next(null);
   }
 }
