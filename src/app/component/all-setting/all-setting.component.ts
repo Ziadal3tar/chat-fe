@@ -10,6 +10,9 @@ import { FriendsService } from 'src/app/services/friends.service';
   styleUrls: ['./all-setting.component.scss'],
 })
 export class AllSettingComponent implements OnInit {
+showBlockedUsers: boolean = false; // للتحكم في ظهور السيكشن
+  blockedUsers: any[] = []; // مثال على المستخدمين المحظورين
+userData:any
   constructor(
     private Router: Router,
     private ShareFunctionsService:ShareFunctionsService,
@@ -18,8 +21,20 @@ export class AllSettingComponent implements OnInit {
 
   ) {}
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.UserService.user$.subscribe((data:any)=>{
+console.log(data);
+if (data?.blockedUsers?.length>=0) {
 
+  this.blockedUsers = data.blockedUsers
+}
+      this.userData = data
+    })
+  }
+
+  toggleBlockedUsers() {
+    this.showBlockedUsers = !this.showBlockedUsers;
+  }
   backHome(){
     this.ShareFunctionsService.sendClickEvent()
       }
@@ -30,17 +45,20 @@ export class AllSettingComponent implements OnInit {
   this.Router.navigate(['/login']);
   }
 
-  unblockUser(friendId: string) {
-    this.UserService.user$.subscribe((data:any)=>{
 
-      this.friendService.unblockUser(data._id, friendId).subscribe({
+
+
+  unblockUser(friendId: string) {
+
+
+      this.friendService.unblockUser(this.userData._id, friendId).subscribe({
         next: (res) => {
-          console.log('✅ User unblocked');
+          console.log(res);
           this.UserService.getUserData(); // لتحديث الواجهة
         },
         error: (err) => console.error(err),
       });
-    })
+
 }
 
 }

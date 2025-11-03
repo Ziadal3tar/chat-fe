@@ -9,7 +9,7 @@
 
 
       <div [ngClass]="chat"
-        class="col-lg-8 col-sm-12  flex-column align-items-center justify-content-center h-100 p-md-4 p-sm-0 position-relative d-none d-md-flex">
+        class="col-lg-8 col-sm-12  flex-column align-items-center justify-content-center h-100 p-md-4 p-sm-0 position-relative d-md-flex">
         <div class="w-100 h-100" [ngClass]="{ 'd-none': chatItem != 'd-none' }"
           style="background: url('./assets/img/Chatting-rafiki.svg') center/contain no-repeat;"> </div>
         <!-- Chat Header -->
@@ -55,14 +55,14 @@
             </div>
 
             <!-- الرسالة -->
-            <div [ngClass]="{
+            <div  [ngClass]="{
         'justify-content-end': message?.sendBy?._id == userData._id,
         'justify-content-start': message?.sendBy?._id != userData._id,
         'mt-3': i == 0
       }" class="col-12 d-flex align-items-start px-3 py-1 position-relative">
 
               <div class="message-wrapper d-flex flex-column align-items-end" style="max-width: 70%; z-index: 1;">
-                <p [ngClass]="{
+                <p *ngIf="message?.content" [ngClass]="{
             'my-message': message?.sendBy?._id == userData._id,
             'other-message': message?.sendBy?._id != userData._id
           }" class="message-text mt-1 mb-0 p-2 rounded-4 shadow-sm">
@@ -271,13 +271,13 @@
                   [style.background-repeat]="'no-repeat'"></div>
               </div>
 
-              <div *ngIf="(myChats.length >= 0 && searchTerm?.trim()?.length == 0 && filteredFriends.length == 0)"
+              <div *ngIf="(myChats.length == 0 && searchTerm?.trim()?.length == 0 && filteredFriends.length == 0)"
                 class="text-center text-muted py-4"> لا يوجد محادثات لعرضها </div>
 
 
             </ng-container>
             <!-- حالة لا توجد نتائج -->
-            <div *ngIf="(searchTerm?.trim()?.length > 0 && filteredFriends.length === 0)"
+            <div *ngIf="(searchTerm?.trim()?.length > 0 && filteredFriends.length === 0 )"
               class="text-center text-muted py-4"> لا يوجد أصدقاء مطابقين للبحث </div>
           </div>
         </div>

@@ -29,10 +29,19 @@ export class AppComponent {
     });
   }
   ngOnInit(): void {
+
+
+
+
      setTimeout(() => {
-        this.initializeSocketListeners();
+
+if (this.socketService.socket) {
+    this.initializeSocketListeners();
+  } else {
+    console.error('Socket not initialized!');
+  }
       }, 500); // تأخير بسيط لتأكيد الاتصال
-    
+
   }
 
   initializeSocketListeners() {

@@ -31,9 +31,25 @@
   <!-- Account Section -->
   <section class="settings-section mb-4">
     <h6 class="text-muted fw-bold mb-3">Account</h6>
-    <div class="col-lg-6 col-md-8 col-sm-12 mx-auto">
+    <div class="col-12 mx-auto">
       <label class="form-label fw-semibold">Blocked Users</label>
-      <button class="btn btn-secondary w-100 bg-opacity-75">2 Blocked Users</button>
+      <!-- <button class="btn btn-secondary w-100 bg-opacity-75">2 Blocked Users</button> -->
+
+      <button class="btn btn-secondary w-100 bg-opacity-75" (click)="toggleBlockedUsers()">
+  {{ blockedUsers.length }} Blocked Users
+</button>
+<div *ngIf="showBlockedUsers" class="blocked-users-list mt-3">
+  <ul class="list-group">
+    <li *ngFor="let user of blockedUsers" class="list-group-item d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-2">
+        <img [src]="user.profileImage" alt="{{user.name}}" class="rounded-circle" width="40" height="40">
+        <span>{{ user.userName }}</span>
+      </div>
+      <button class="btn btn-sm btn-outline-danger" (click)="unblockUser(user._id)">Unblock</button>
+    </li>
+  </ul>
+</div>
+
     </div>
   </section>
 

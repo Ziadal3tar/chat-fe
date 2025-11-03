@@ -7,9 +7,15 @@ import { io, Socket } from 'socket.io-client';
 })
 export class SocketService {
   socket!: Socket;
-
+  constructor() {
+//    this.socket = io('https://your-backend-url.up.railway.app', {
+//   transports: ['websocket', 'polling'],
+// });
+  }
   connect(userId: string): void {
-    this.socket = io('http://localhost:3000'); // غيّر الرابط حسب السيرفر
+   this.socket = io('https://chat-be-production-6974.up.railway.app', {
+  transports: ['websocket', 'polling'],
+});
     this.socket.emit('userOnline', userId);
   }
 

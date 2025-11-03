@@ -73,7 +73,16 @@ export class FriendComponent implements OnInit {
       error: (err) => console.error(err),
     });
   }
+blockUser(friendId: string) {
+  this.friendService.blockUser(this.userData._id, friendId).subscribe({
+    next: (res) => {
+      console.log('🚷 User blocked');
 
+      this.UserService.getUserData(); // تحديث البيانات
+    },
+    error: (err) => console.error(err),
+  });
+}
   backHome() {
     this.ShareFunctionsService.sendClickEvent();
   }

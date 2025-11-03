@@ -94,8 +94,6 @@ this.socketService.emit('join', this.userData._id);
   }
   initializeSocketListeners() {
     this.socketService.listen('receiveMessage').subscribe((data: any) => {
-      console.log('hhhhhhhh');
-
       this.UserService.getUserData();
       this.handleIncomingMessage(data);
       setTimeout(() => this.scrollToBottom(true), 0);
@@ -113,60 +111,65 @@ this.socketService.emit('join', this.userData._id);
   /** 📬 التعامل مع الرسائل المستقبلة لحظيًا */
 
   handleIncomingMessage(data: any) {
-    const chatIndex = this.myChats.findIndex(
-      (chat: any) => chat.participants[0]._id === data.message.sendBy
-    );
+  const chatIndex = this.myChats.findIndex(
+    (chat: any) => chat._id === data.message.chatId
+  );
+console.log(data);
+console.log(this.myChats);
+
+  if (chatIndex === -1) {
+    // الشات غير موجود → أضفه
+    const newChat = {
+      _id: data.message.chatId,
+      participants: [data.message.sendBy, data.message.sendTo],
+      lastMessage: data.message,
+      unreadCount: data.message.sendBy !== this.userData._id ? 1 : 0
+    };
+    this.myChats.unshift(newChat);
+
+    // لو الشات مفتوح حالياً
     if (data.message.sendBy === this.theOpenedChatId?._id) {
-      const readMessage = { ...data.message, isRead: true };
-      this.theChat.push(readMessage);
+      this.theChat.push({ ...data.message, isRead: true });
+      newChat.unreadCount = 0;
 
-      const chatIndex = this.myChats.findIndex(
-        (c: any) => c._id === data.chatId
-      );
+      // إشعار السيرفر بالقراءة
+      this.socketService.emit('markAsRead', {
+        chatId: data.chatId,
+        readerId: this.userData._id,
+        friendId: this.theOpenedChatId._id,
+      });
+    }
+  } else {
+    const chat = this.myChats[chatIndex];
+    chat.lastMessage = data.message;
 
-      if (chatIndex !== -1) {
-        // ✅ حدث الرسالة بالكامل كآخر رسالة
-        this.myChats[chatIndex].lastMessage = readMessage;
+    if (data.message.sendBy === this.theOpenedChatId?._id) {
+      // الشات مفتوح → اعتبر الرسالة مقروءة
+      this.theChat.push({ ...data.message, isRead: true });
+      chat.unreadCount = 0;
 
-        // ✅ خليه يطلع في أول الشات (زي في else)
-        const chat = this.myChats.splice(chatIndex, 1)[0];
-        this.myChats.unshift(chat);
-
-        // ✅ تأكد إن عداد الرسائل الغير مقروءة صفر
-        this.myChats[0].unreadCount = 0;
-      }
-
-      this.audio.pause();
-      this.audio.currentTime = 0;
-      this.audio.play();
-
-      // ✅ إشعار السيرفر بالقراءة
+      // إشعار السيرفر بالقراءة
       this.socketService.emit('markAsRead', {
         chatId: data.chatId,
         readerId: this.userData._id,
         friendId: this.theOpenedChatId._id,
       });
     } else {
-      if (chatIndex !== -1) {
-        const chat = this.myChats[chatIndex];
-        chat.lastMessage = data.message;
-        this.myChats.splice(chatIndex, 1);
-        this.myChats.unshift(chat);
-      }
-
-      this.audio.pause();
-      this.audio.currentTime = 0;
-      this.audio.play();
-      this.sortChats(this.myChats);
-
-      let index = this.myChats.findIndex(
-        (chat: any) => chat._id === data.chatId
-      );
-      console.log(this.myChats[index]);
-
-      this.myChats[index].unreadCount++;
+      // رسالة من طرف آخر → زيادة عداد الرسائل الغير مقروءة
+      chat.unreadCount = (chat.unreadCount || 0) + 1;
     }
+
+    // نقل الشات إلى أول القائمة
+    this.myChats.splice(chatIndex, 1);
+    this.myChats.unshift(chat);
   }
+
+  // تشغيل صوت الرسائل
+  this.audio.pause();
+  this.audio.currentTime = 0;
+  this.audio.play();
+}
+
 
   /** 🟢 تحميل الأصدقاء المتصلين */
   loadOnlineFriends() {
@@ -221,11 +224,11 @@ this.socketService.emit('join', this.userData._id);
       ? data[i] // من البحث
       : data[i].participants[0]; // من الشاتات القديمة
 
-    this.theOpenedChatId = friendData;
 
     this.UserService.getChat({ myId, friendId: friendData._id }).subscribe({
       next: (res: any) => {
         const chatData = res?.chat?.chat;
+    this.theOpenedChatId = friendData;
 
         if (chatData) {
           // ✅ لو في محادثة سابقة
