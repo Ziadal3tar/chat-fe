@@ -70,7 +70,7 @@ export class HomeComponent implements OnInit {
   @ViewChild('chatContainer') chatContainer!: ElementRef;
 
   ngOnInit(): void {
-    this.audio.src = '../../../assets/audio/ttn.mp3';
+    this.audio.src = './assets/audio/ttn.mp3';
 
     this.UserService.user$
       .pipe(
