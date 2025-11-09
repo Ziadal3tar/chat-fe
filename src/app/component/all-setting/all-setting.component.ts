@@ -36,6 +36,8 @@ if (data?.blockedUsers?.length>=0) {
     this.showBlockedUsers = !this.showBlockedUsers;
   }
   backHome(){
+    console.log('gf');
+
     this.ShareFunctionsService.sendClickEvent()
       }
 
