@@ -5,7 +5,7 @@ import { Injectable } from '@angular/core';
   providedIn: 'root',
 })
 export class FriendsService {
-  private baseUrl = 'https://chat-be-production-6974.up.railway.app/api';
+  private baseUrl = 'https://chat-be-px76.onrender.com/api';
 
   constructor(private http: HttpClient) {}
 

@@ -33,42 +33,42 @@ export class AppComponent {
 
 
 
-     setTimeout(() => {
+    setTimeout(() => {
 
-if (this.socketService.socket) {
-    this.initializeSocketListeners();
-  } else {
-    console.error('Socket not initialized!');
-  }
-      }, 500); // تأخير بسيط لتأكيد الاتصال
+      if (this.socketService.socket) {
+        this.initializeSocketListeners();
+      } else {
+        console.error('Socket not initialized!');
+      }
+    }, 500); // تأخير بسيط لتأكيد الاتصال
 
   }
 
   initializeSocketListeners() {
 
 
-  this.socketService.listen('friendRequestReceived').subscribe((data: any) => {
-    console.log('📩 Friend Request Received:', data);
-    this.UserService.getUserData();
+    this.socketService.listen('friendRequestReceived').subscribe((data: any) => {
+      console.log('📩 Friend Request Received:', data);
+      this.UserService.getUserData();
 
-  });
+    });
 
-  this.socketService.listen('friendRequestAccepted').subscribe((data: any) => {
-    console.log('🎉 Friend Request Accepted:', data);
-    this.UserService.getUserData();
-  });
+    this.socketService.listen('friendRequestAccepted').subscribe((data: any) => {
+      console.log('🎉 Friend Request Accepted:', data);
+      this.UserService.getUserData();
+    });
 
-  this.socketService.listen('friendRequestRejected').subscribe((data: any) => {
-    console.log('🚫 Friend Request Rejected:', data);
-    this.UserService.getUserData();
-  });
-  this.socketService.listen('blockUser').subscribe((data: any) => {
-    console.log('🚫 Friend block u:');
-    this.UserService.getUserData();
-  });
-  this.socketService.listen('unBlockUser').subscribe((data: any) => {
-    console.log('🚫 Friend Unblock u:');
-    this.UserService.getUserData();
-  });
-}
+    this.socketService.listen('friendRequestRejected').subscribe((data: any) => {
+      console.log('🚫 Friend Request Rejected:', data);
+      this.UserService.getUserData();
+    });
+    this.socketService.listen('blockUser').subscribe((data: any) => {
+      console.log('🚫 Friend block u:');
+      this.UserService.getUserData();
+    });
+    this.socketService.listen('unBlockUser').subscribe((data: any) => {
+      console.log('🚫 Friend Unblock u:');
+      this.UserService.getUserData();
+    });
+  }
 }

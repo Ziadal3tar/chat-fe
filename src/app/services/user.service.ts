@@ -6,7 +6,8 @@ import { io } from 'socket.io-client';
   providedIn: 'root',
 })
 export class UserService {
-  private baseUrl = 'https://chat-be-production-6974.up.railway.app/api';
+  // private baseUrl = 'https://chat-be-production-6974.up.railway.app/api';
+  private baseUrl = 'https://chat-be-px76.onrender.com/api';
 
   private userSubject = new BehaviorSubject<any>(null);
   user$: any = this.userSubject.asObservable();

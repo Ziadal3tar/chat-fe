@@ -13,7 +13,7 @@ export class SocketService {
 // });
   }
   connect(userId: string): void {
-   this.socket = io('https://chat-be-production-6974.up.railway.app', {
+   this.socket = io('https://chat-be-px76.onrender.com', {
   transports: ['websocket', 'polling'],
 });
     this.socket.emit('userOnline', userId);
