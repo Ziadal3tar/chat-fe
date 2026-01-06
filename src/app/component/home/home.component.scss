@@ -28,8 +28,10 @@
 }
 .chat-container {
   height: 84%;
-  background: url('/assets/img/5556.jpg') center/cover;
-  overflow-y: auto;
+background-image: url('/assets/img/5556.jpg');
+background-position: center;
+background-size: cover;
+background-repeat: no-repeat;  overflow-y: auto;
   scrollbar-gutter: stable;
 }
 
