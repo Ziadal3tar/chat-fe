@@ -1,0 +1,15 @@
+.disabled{
+  pointer-events: none;
+}
+.userImg{
+  width: 150px;
+  height: 150px;
+background-position: center center !important;
+background-size: cover !important;
+}
+.bgcolor{
+  background-color: var(--bgcolor) !important;
+  }
+  .color{
+    color: var(--color) !important;
+  }

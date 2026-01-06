@@ -1,0 +1,41 @@
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.transition {
+  transition: 0.3s all ease;
+}
+
+.transition:hover {
+  opacity: 0.9;
+}
+
+.time-box {
+  background: #f8f9fa;
+  border-radius: 20px;
+  text-align: center;
+  width: 60px;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.time-box .label {
+  margin: 0;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.time-box .value {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.reminder-item:hover {
+  background-color: #fdfdfd;
+  transform: scale(1.01);
+  transition: all 0.3s ease;
+}

@@ -1,0 +1,39 @@
+.friend-card {
+  background-color: #fff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.friend-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.user-image {
+  width: 70px;
+  height: 70px;
+  background-size: cover;
+  background-position: center;
+}
+
+.status-dot {
+  width: 14px;
+  height: 14px;
+  bottom: 5px;
+  right: 5px;
+  border: 2px solid white;
+}
+
+.friend-requests h5,
+.friends-list h5 {
+  border-left: 4px solid #007bff;
+  padding-left: 8px;
+}
+
+@media (max-width: 768px) {
+  .user-image {
+    width: 60px;
+    height: 60px;
+  }
+  .friend-card {
+    padding: 1rem;
+  }
+}

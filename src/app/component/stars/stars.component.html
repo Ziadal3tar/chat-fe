@@ -1,0 +1,36 @@
+<!-- 🔹 Header -->
+<div class="w-100 border-bottom pb-2 d-flex align-items-center justify-content-between">
+ 
+          <h4 class="m-0 fw-bold text-primary">Stars</h4>
+
+  <div class="m-0 p-0 my-auto cursor-pointer backHome" (click)="backHome()">
+    <i class="fa-solid fa-house p-0 m-0"></i>
+  </div>
+</div>
+
+<!-- 🔹 قائمة العناصر -->
+<div
+  class="star-item row align-items-center justify-content-between bg-light rounded-4 shadow-sm my-3 mx-auto p-3 position-relative overflow-hidden"
+  *ngFor="let dummy of ' '.repeat(8).split(''); let i = index"
+>
+  <!-- صورة المستخدم -->
+  <div class="col-md-2 col-sm-12 d-flex flex-column align-items-center justify-content-center text-center mb-3 mb-md-0">
+    <div class="user-img mb-2"></div>
+    <p class="fw-semibold m-0">Ali Ali</p>
+  </div>
+
+  <!-- النص -->
+  <div class="col-md-9 col-sm-12">
+    <p class="m-0 text-muted">
+      Lorem ipsum dolor sit amet consectetur adipisicing elit. Molestiae sapiente impedit repellat saepe voluptatibus
+      exercitationem ipsa officiis quam atque maiores?
+    </p>
+  </div>
+
+  <!-- زر الحذف -->
+  <div
+    class="delete-btn col-md-1 col-sm-12 d-flex align-items-center justify-content-center cursor-pointer mt-3 mt-md-0"
+  >
+    <i class="fa-solid fa-trash text-danger fs-5"></i>
+  </div>
+</div>

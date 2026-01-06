@@ -1,0 +1,226 @@
+<!-- <p class="cursor-pointer position-absolute top-0 start-0" routerLink="/login" (click)="logout()">logout</p> -->
+
+<div class="main-container d-flex justify-content-center align-items-center">
+  <div class="home-layout row col-12 vh-100 d-flex justify-content-center align-items-center">
+
+    <!-- 🔍 Search Section -->
+    <div [ngClass]="searchStyle" class="col-lg-8 col-sm-12">
+      <app-search [ngClass]="searchStyle"></app-search>
+    </div>
+
+    <!-- 💬 Chat Section -->
+    <div [ngClass]="chat" class="chat-section col-lg-8 col-sm-12 d-md-flex flex-column position-relative">
+
+      <!-- Placeholder Image -->
+      <div class="w-100 h-100 placeholder-bg" [ngClass]="{ 'd-none': chatItem != 'd-none' }"
+        style="background: url('./assets/img/Chatting-rafiki.svg') center/contain no-repeat;">
+      </div>
+
+      <!-- Chat Header -->
+      <div [ngClass]="chatItem" class="chat-header d-flex justify-content-between align-items-center px-3">
+        <!-- Left -->
+        <div class="chat-controls d-flex align-items-center gap-3">
+          <div ngbDropdown>
+            <i class="fa-solid fa-ellipsis-vertical fs-5 cursor-pointer" id="dropdownBasic1" ngbDropdownToggle></i>
+            <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
+              <p ngbDropdownItem>Block</p>
+              <p ngbDropdownItem>Remove Chat</p>
+              <p (click)="closeChat()" ngbDropdownItem>Close</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-phone fs-5"></i>
+        </div>
+
+        <!-- Right -->
+        <div class="chat-user d-flex align-items-center gap-2">
+          <p class="chat-name m-0">{{ nameChat }}</p>
+          <div class="chat-avatar rounded-circle" [style.background]="'url(' + imgChat + ') center/cover no-repeat'">
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat Messages -->
+      <div #chatContainer [ngClass]="chatItem" class="chat-container">
+        <ng-container *ngFor="let message of theChat; let i = index">
+
+          <!-- 📅 Date Divider -->
+          <div *ngIf="message.showDivider" class="date-divider text-center py-2">
+            <span class="bg-light px-3 py-1 rounded-pill small text-secondary shadow-sm">
+              {{ formatDateDivider(message?.date) }}
+            </span>
+          </div>
+
+          <!-- 💌 Message -->
+          <div class="message-row d-flex px-3 py-1" [ngClass]="{
+              'justify-content-end': message?.sendBy?._id == userData._id,
+              'justify-content-start': message?.sendBy?._id != userData._id,
+              'mt-3': i == 0
+            }">
+
+            <div class="message-wrapper d-flex flex-column" style="max-width: 70%;">
+
+              <p *ngIf="message?.content" [ngClass]="{
+                  'my-message': message?.sendBy?._id == userData._id,
+                  'other-message': message?.sendBy?._id != userData._id
+                }" class="message-text p-2 rounded-4 shadow-sm mb-1">
+                {{ message?.content }}
+              </p>
+
+              <!-- 🖼️ Image -->
+              <img *ngIf="message.fileType === 'image'" [src]="message.fileUrl" class="message-image"
+                (click)="openMediaViewer(message.fileUrl, 'image')" />
+
+              <!-- 📄 PDF -->
+              <div *ngIf="message.fileType === 'pdf'" class="pdf-message d-flex align-items-center gap-2">
+                <i class="fa fa-file-pdf text-danger"></i>
+                <a [href]="message.fileUrl" download target="_blank">Download PDF</a>
+              </div>
+
+              <!-- 🎥 Video -->
+              <video *ngIf="message.fileType === 'video'" [src]="message.fileUrl" controls class="message-video"
+                (click)="openMediaViewer(message.fileUrl, 'video')"></video>
+
+              <span class="message-time small mt-1 text-light">
+                <i *ngIf="message.sendBy._id === userData._id" class="fa"
+                  [ngClass]="message.isRead ? 'fa-check-double text-primary' : 'fa-check'"></i>
+                {{ formatTime(message?.time || message?.date) }}
+              </span>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+
+      <!-- 🖊️ Chat Input -->
+      <div *ngIf="theOpenedChatId"
+        class="chat-input d-flex align-items-center justify-content-between px-3 py-2 border-top bg-light">
+
+        <!-- 😊 Emoji -->
+        <button class="icon-btn"><i class="fa-solid fa-face-smile"></i></button>
+
+        <!-- 📎 Attach -->
+        <div class="position-relative">
+          <input id="fileInput" type="file" class="d-none" (change)="onFileSelected($event)" #fileInput />
+          <button class="icon-btn" (click)="fileInput.click()">
+            <i class="fa-solid fa-paperclip"></i>
+          </button>
+        </div>
+
+        <!-- ✏️ Input + Preview -->
+        <div class="flex-grow-1 mx-2 position-relative">
+
+          <!-- Preview Boxes (Image, Video, PDF, Trim Section) -->
+          <ng-container *ngIf="filePreview || videoUrl">
+            <div class="preview-box text-center p-2">
+              <ng-container [ngSwitch]="fileType">
+                <img *ngSwitchCase="'image'" [src]="filePreview" class="w-100 rounded mb-2" />
+                <video *ngSwitchCase="'video'" [src]="videoPreview || videoUrl" controls
+                  class="rounded w-100 mb-2"></video>
+                <p *ngSwitchCase="'pdf'" class="fw-bold text-dark">📄 {{ fileName }}</p>
+              </ng-container>
+              <div class="d-flex justify-content-center gap-2 mt-2">
+                <button class="btn btn-success btn-sm" (click)="sendMessage()">إرسال</button>
+                <button class="btn btn-danger btn-sm" (click)="cancelPreview()">إلغاء</button>
+              </div>
+            </div>
+          </ng-container>
+
+          <!-- Input Field -->
+          <div class="input-group">
+            <input type="text" [(ngModel)]="message" placeholder="اكتب رسالتك..."
+              class="form-control rounded-pill rounded-end-0 shadow-sm" />
+            <button [disabled]="!message.trim() && !selectedFile" class="btn send-btn" (click)="sendMessage()">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 🎙️ Mic -->
+        <button class="icon-btn"><i class="fa-solid fa-microphone"></i></button>
+      </div>
+    </div>
+
+
+
+    <!-- 👥 Friends Section -->
+    <div [ngClass]="friend" class="friends-section col-lg-4 p-md-4 p-sm-0 h-100 position-relative z-2">
+      <div class="friends-list h-100 d-flex flex-column rounded-top bg-light text-dark">
+
+        <!-- Header -->
+        <div class="d-flex align-items-center justify-content-between p-3 border-bottom bg-light" style="height: 8%;">
+          <i class="fa-solid fa-bars fs-4 cursor-pointer" (click)="toggleSettings()"></i>
+          <div class="d-flex align-items-center">
+            <p class="my-auto me-2">{{ userData?.userName }}</p>
+            <div class="user-img" [style.background]="'url(' + userData?.profileImage + ') center/cover no-repeat'">
+            </div>
+          </div>
+        </div>
+
+        <!-- Search -->
+        <div class="friend-search d-flex align-items-center p-2 p-md-3 border-top">
+          <div class="search-box d-flex align-items-center flex-grow-1 rounded-pill shadow-sm px-3 py-2">
+            <i class="fa-solid fa-magnifying-glass me-2 text-muted"></i>
+            <input type="text" class="search-input flex-grow-1 border-0 bg-transparent"
+              placeholder="Search by username..." [(ngModel)]="searchTerm" (input)="searchFriends()" />
+          </div>
+        </div>
+
+
+        <!-- Friend List -->
+<div class="friend-scroll flex-grow-1 overflow-auto px-2 py-2">
+  <ng-container *ngIf="activeList.length > 0; else noResults">
+    <div *ngFor="let item of activeList; let i = index"
+      class="friend-item d-flex align-items-center gap-3 p-2 rounded-3 cursorPointer"
+      (click)="openChat(i, activeList)">
+
+      <!-- صورة المستخدم -->
+      <div
+        class="friend-avatar rounded-circle overflow-hidden border"
+        [style.background-image]="'url(' + getProfileImage(item) + ')'">
+      </div>
+
+      <!-- معلومات المستخدم -->
+      <div class="flex-grow-1 d-flex flex-column justify-content-center">
+        <div class="d-flex align-items-center justify-content-between">
+          <p class="m-0 fw-semibold text-truncate">{{ getUserName(item) }}</p>
+          <span *ngIf="isChat(item)" class="text-muted small">
+            {{ item?.lastMessage?.date | messageTime: item?.lastMessage?.time }}
+          </span>
+        </div>
+        <div class="d-flex align-items-center justify-content-between">
+          <p *ngIf="isChat(item)" class="text-muted small text-truncate m-0 flex-grow-1">
+            {{ item?.lastMessage?.content }}
+          </p>
+          <span *ngIf="item?.unreadCount > 0" class="badge bg-primary ms-2">
+            {{ item?.unreadCount }}
+          </span>
+        </div>
+      </div>
+
+      <!-- أيقونة الخيارات -->
+      <i class="fa-solid fa-ellipsis-vertical text-secondary opacity-75 fs-6 ms-2"></i>
+    </div>
+  </ng-container>
+
+  <!-- لا توجد نتائج -->
+  <ng-template #noResults>
+    <div class="text-center text-muted py-4">
+      {{
+        searchTerm.trim().length > 0
+          ? 'لا يوجد أصدقاء مطابقين'
+          : 'لا يوجد محادثات'
+      }}
+    </div>
+  </ng-template>
+</div>
+
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 🖼️ Media Viewer -->
+<div *ngIf="mediaViewer.open" class="media-viewer" (click)="closeMediaViewer()">
+  <img *ngIf="mediaViewer.type === 'image'" [src]="mediaViewer.url" />
+  <video *ngIf="mediaViewer.type === 'video'" [src]="mediaViewer.url" controls autoplay></video>
+</div>

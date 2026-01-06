@@ -1,0 +1,86 @@
+<!-- 🔹 Header -->
+<div class="w-100 border-bottom pb-2 d-flex align-items-center justify-content-between">
+
+  <h4 class="m-0 fw-bold text-primary">Reminder</h4>
+
+  <div class="m-0 p-0 my-auto cursor-pointer backHome" (click)="backHome()">
+    <i class="fa-solid fa-house p-0 m-0"></i>
+  </div>
+</div>
+
+<!-- 🔹 نوع التذكير -->
+<div class="row border-bottom mx-0 py-3 align-items-center">
+  <div class="col-md-4 col-sm-12 mb-3">
+    <p class="mb-2 fw-semibold border-start ps-2">Type</p>
+    <div class="d-flex border rounded-pill overflow-hidden text-center">
+      <div (click)="reply = true; send = false" [ngClass]="{ 'bg-success text-white': reply }"
+        class="col-6 p-2 cursor-pointer border-end transition">
+        Reply
+      </div>
+      <div (click)="send = true; reply = false" [ngClass]="{ 'bg-primary text-white': send }"
+        class="col-6 p-2 cursor-pointer transition">
+        Send
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-8 col-sm-12">
+    <p class="mb-2 fw-semibold border-start ps-2">For</p>
+    <input type="text" class="form-control rounded-pill border-0 border-bottom shadow-sm"
+      placeholder="Name, email, or phone" />
+  </div>
+</div>
+
+<!-- 🔹 تفاصيل التذكير -->
+<div class="row my-4">
+  <div class="col-md-8 col-sm-12 mb-3">
+    <p class="mb-2 fw-semibold border-start ps-2">Description</p>
+    <textarea name="explained" class="form-control rounded-3 border-0 border-bottom shadow-sm" rows="5"
+      placeholder="Explain your reminder..."></textarea>
+  </div>
+
+  <div class="col-md-4 col-sm-12">
+    <p class="mb-2 fw-semibold border-start ps-2">Date & Time</p>
+    <input type="date" [(ngModel)]="date" class="form-control mb-2 rounded-pill border-0 border-bottom shadow-sm" />
+    <input type="time" [(ngModel)]="time" class="form-control rounded-pill border-0 border-bottom shadow-sm" />
+
+    <div class="text-center mt-4">
+      <button class="btn btn-primary fw-semibold px-4 rounded-pill" (click)="vv()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- 🔹 عرض التذكيرات -->
+<div *ngFor="let dummy of ' '.repeat(8).split(''); let i = index"
+  class="position-relative w-100 rounded-4 overflow-hidden bg-light py-4 px-3 mb-3 shadow-sm reminder-item">
+  <i class="fa-solid fa-paper-plane position-absolute top-0 start-0 bg-primary text-white p-2"
+    style="border-radius: 0 0 50% 0;"></i>
+
+  <i class="fa-solid fa-trash position-absolute top-0 end-0 bg-danger text-white p-2 cursor-pointer"
+    style="border-radius: 0 0 0 50%;"></i>
+
+  <div class="row align-items-center mb-3">
+    <div class="col-md-6 col-sm-12">
+      <h5 class="fw-semibold m-0">You must send to Muhammad</h5>
+    </div>
+    <div class="col-md-6 col-sm-12 d-flex justify-content-center justify-content-md-end gap-3 mt-3 mt-md-0">
+      <div class="time-box">
+        <p class="label">Day</p>
+        <p class="value">555</p>
+      </div>
+      <div class="time-box">
+        <p class="label">Hour</p>
+        <p class="value">17</p>
+      </div>
+      <div class="time-box">
+        <p class="label">Min</p>
+        <p class="value">48</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="m-0 text-muted">
+    Lorem ipsum dolor sit amet, consectetur adipisicing elit. Adipisci blanditiis pariatur nobis. Dicta aliquam
+    reprehenderit.
+  </p>
+</div>

@@ -1,0 +1,78 @@
+<div class="settings-container w-100 h-100 d-flex flex-column p-3">
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-3">
+    <h4 class="m-0 fw-bold text-primary">Settings</h4>
+    <button class="btn btn-outline-secondary rounded-circle" (click)="backHome()">
+      <i class="fa-solid fa-house"></i>
+    </button>
+  </div>
+
+  <!-- General Section -->
+  <section class="settings-section mb-4">
+    <h6 class="text-muted fw-bold mb-3">General</h6>
+    <div class="row g-3">
+      <div class="col-lg-4 col-md-6 col-sm-12">
+        <label class="form-label fw-semibold">Mood</label>
+        <select class="form-select">
+          <option>Dark</option>
+          <option>Light</option>
+        </select>
+      </div>
+      <div class="col-lg-4 col-md-6 col-sm-12">
+        <label class="form-label fw-semibold">Language</label>
+        <select class="form-select">
+          <option>English</option>
+          <option>Arabic</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- Account Section -->
+  <section class="settings-section mb-4">
+    <h6 class="text-muted fw-bold mb-3">Account</h6>
+    <div class="col-12 mx-auto">
+      <label class="form-label fw-semibold">Blocked Users</label>
+      <!-- <button class="btn btn-secondary w-100 bg-opacity-75">2 Blocked Users</button> -->
+
+      <button class="btn btn-secondary w-100 bg-opacity-75" (click)="toggleBlockedUsers()">
+  {{ blockedUsers.length }} Blocked Users
+</button>
+<div *ngIf="showBlockedUsers" class="blocked-users-list mt-3">
+  <ul class="list-group">
+    <li *ngFor="let user of blockedUsers" class="list-group-item d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-2">
+        <img [src]="user.profileImage" alt="{{user.name}}" class="rounded-circle" width="40" height="40">
+        <span>{{ user.userName }}</span>
+      </div>
+      <button class="btn btn-sm btn-outline-danger" (click)="unblockUser(user._id)">Unblock</button>
+    </li>
+  </ul>
+</div>
+
+    </div>
+  </section>
+
+  <!-- Privacy Section -->
+  <section class="settings-section mb-4">
+    <h6 class="text-muted fw-bold mb-3">Privacy</h6>
+    <div class="row g-3">
+      <div class="col-lg-3 col-md-6 col-sm-12" *ngFor="let item of ['Last Seen', 'Picture', 'Status', 'Story']">
+        <label class="form-label fw-semibold">{{ item }}</label>
+        <select class="form-select">
+          <option>All</option>
+          <option>Friends</option>
+          <option>Customize</option>
+          <option>Exclusion</option>
+          <option>None</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- Actions -->
+  <div class="settings-actions d-flex flex-wrap justify-content-center gap-3 mt-auto">
+    <button class="btn btn-primary px-5">Save</button>
+    <button class="btn btn-outline-danger px-4" (click)="logout()">Logout</button>
+  </div>
+</div>
