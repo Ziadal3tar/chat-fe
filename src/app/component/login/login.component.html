@@ -53,7 +53,11 @@ class="col-12 row m-0 text-black d-flex align-items-center  py-1 ">
                 <p class=" my-auto mb-1 opacity-75 ">تذكرني</p>
               </div>
               <div class=" col-lg-6 col-sm-12 p-0 ">
-                <button (click)="login()" class="w-100 btn btn-info text-white ">تسجيل الدخول</button>
+                <button (click)="login()" class="w-100 btn btn-info text-white ">تسجيل الدخول
+                            <div *ngIf="loading" class="  spinner-border text-white loaded" role="status" >
+    <span class="visually-hidden"></span>
+  </div>
+                </button>
               </div>
             </div>
 
@@ -97,11 +101,7 @@ class="col-12 row m-0 text-black d-flex align-items-center  py-1 ">
             </div>
             <div class=" d-flex my-2  w-100 ">
 
-              <!-- <button class=" btn  rounded-end rounded-0 m-0 border-0 py-2 px-0 text-white w-100 "
-                style="background-color: #ef4437;">جوجل</button>
-              <span class="input-group-text m-0 rounded-start rounded-0 border-0" style="background-color: #ef4437;"
-                id="basic-addon1"><i
-                  class="fa-brands fa-google text-white  d-flex align-items-center justify-content-center"></i></span> -->
+
                   <asl-google-signin-button></asl-google-signin-button>
 
             </div>
@@ -158,7 +158,12 @@ class="col-12 row m-0 text-black d-flex align-items-center  py-1 ">
                 <p class=" my-auto mb-1 opacity-75 ">Remember me</p>
               </div>
               <div class=" col-lg-6 col-sm-12 p-0 ">
-                <button (click)="login()" class="w-100 btn btn-info text-white ">LOGIN</button>
+                <button (click)="login()" class="w-100 btn btn-info text-white ">LOGIN
+
+                  <div *ngIf="loading" class="  spinner-border text-white loaded" role="status" >
+    <span class="visually-hidden"></span>
+  </div>
+                </button>
               </div>
             </div>
             <div [ngClass]="{'text-white': mood == 'night'}" style="font-size: 15px !important;"

@@ -36,7 +36,13 @@ export class UserService {
       })
       .subscribe((data: any) => {
         this.userSubject.next(data.user);
-      });
+      },(err) => {
+      console.error(err.error.message);
+      if (err.error.message == 'User not found') {
+
+localStorage.removeItem('token');
+      }
+    });
   }
   searchUser(data: { name: string }, token: string | null) {
     return this.http.post(`${this.baseUrl}/user/search`, data, {

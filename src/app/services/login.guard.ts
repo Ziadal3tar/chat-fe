@@ -22,9 +22,11 @@ return this.UserService.user$.pipe(
   map((data: any) => {
     if (data) return true;
 
+    this.UserService.getUserData();
     const token = localStorage.getItem('token');
     if (token) {
-      this.UserService.getUserData();
+
+
       return true;
     }
 

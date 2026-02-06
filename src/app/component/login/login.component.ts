@@ -24,6 +24,7 @@ export class LoginComponent implements OnInit {
   morning = 'url(./assets/img/white-abstract-background_23-2148817571.jpg)';
   night = 'url(./assets/img/6222603.jpg)';
   language = 'العربية';
+  loading:boolean = false
   constructor(
     private ShareFunctionsService: ShareFunctionsService,
     private elem: ElementRef,
@@ -35,6 +36,12 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    alert(
+  'Login with\n' +
+  'Email: User@gmail.com\n' +
+  'Password: 123456'
+);
+
     localStorage.clear()
     this.elem.nativeElement.style.setProperty('--bg', this.morning);
     this.elem.nativeElement.style.setProperty('--bgline', 'rgb(0 0 0 / 20%)');
@@ -74,6 +81,7 @@ export class LoginComponent implements OnInit {
   }
 
   login() {
+    this.loading = true
   const user = {
     emailOrPhone: this.emailOrPhone,
     password: this.password,
@@ -81,6 +89,7 @@ export class LoginComponent implements OnInit {
 
   this.UserService.login(user).subscribe({
     next: (data: any) => {
+      this.loading = false
       if (data.emailErr) {
         this.emailErr = data.emailErr;
         this.passErr = '';
@@ -117,6 +126,7 @@ export class LoginComponent implements OnInit {
       }
     },
     error: (err) => {
+      this.loading = false
       console.error('Login request failed:', err);
       this.emailErr = 'Server error. Please try again later.';
       this.passErr = '';

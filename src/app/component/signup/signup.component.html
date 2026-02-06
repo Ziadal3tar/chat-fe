@@ -63,7 +63,7 @@
                 <p class=" my-auto mb-1 opacity-75 ">تذكرني</p>
               </div>
               <div class=" col-lg-6 col-sm-12 p-0 ">
-                <button class="w-100 btn btn-info text-white ">تسجيل الدخول</button>
+                <button class="w-100 btn btn-info text-white ">تسجيل الدخول </button>
               </div>
             </div>
             <div [ngClass]="{'text-white': mood == 'night'}" style="font-size: 15px !important;"
@@ -152,7 +152,9 @@
                 <p class=" my-auto mb-1 opacity-75 ">Remember me</p>
               </div>
               <div class=" col-lg-6 col-sm-12 p-0 ">
-                <button class="w-100 btn btn-info text-white " (click)="register()">SIGNUP</button>
+                <button class="w-100 btn btn-info text-white " (click)="register()">SIGNUP           <div *ngIf="loading" class="  spinner-border text-white loaded" role="status" >
+    <span class="visually-hidden"></span>
+  </div></button>
                 <!-- عرض رسالة الخطأ -->
 <div *ngIf="errorMessage" class="alert alert-danger mt-2 w-100 text-center py-2">
   {{ errorMessage }}

@@ -18,6 +18,7 @@ export class SignupComponent implements OnInit {
   night = 'url(./assets/img/6222603.jpg)';
   mood = 'morning';
   language = 'العربية';
+  loading:boolean = false
 
   userName: any;
   email: any;
@@ -31,6 +32,11 @@ export class SignupComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+       alert(
+  'Login with\n' +
+  'Email: User@gmail.com\n' +
+  'Password: 123456'
+);
     if (this.language == 'العربية') {
       setTimeout(() => {
         this.hello = 'opacity-0 transition';
@@ -66,6 +72,8 @@ export class SignupComponent implements OnInit {
 errorMessage: string = ''; // متغير لتخزين الخطأ
 
 register() {
+    this.loading = true
+
   this.errorMessage = ''; // إعادة التهيئة في كل محاولة تسجيل
   const user = {
     userName: this.userName?.trim(),
@@ -76,31 +84,43 @@ register() {
 
   // ✅ التحقق المبدئي من الفراغ
   if (!user.userName || !user.email || !user.phone || !user.password) {
+    this.loading = false
+
     this.errorMessage = 'الرجاء ملء جميع الحقول المطلوبة';
     return;
   }
  if (user.userName.length < 3) {
+    this.loading = false
+
     this.errorMessage ='الاسم يجب أن يكون 3 أحرف على الأقل';
     return;
   }
    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(user.email)) {
+    this.loading = false
+
     this.errorMessage ='البريد الإلكتروني غير صالح';
     return;
   }
 
  const phoneRegex = /^[0-9]{10,15}$/;
   if (!phoneRegex.test(user.phone)) {
+    this.loading = false
+
     this.errorMessage ='رقم الهاتف غير صالح';
     return;
   }
 
   // ✅ التحقق من قوة كلمة السر
   if (user.password.length < 4) {
+    this.loading = false
+
     this.errorMessage ='كلمة السر يجب أن تكون 6 أحرف على الأقل';
     return;
   }
   if (user.password !== this.confirmPassword) {
+    this.loading = false
+
     this.errorMessage ='كلمتا السر غير متطابقتين';
     return;
   }
@@ -108,6 +128,8 @@ register() {
   // ✅ استدعاء الـ API
   this.UserService.register(user).subscribe({
     next: (data: any) => {
+    this.loading = false
+
       if (data.status === 'success') {
         this.Router.navigate(['/login']);
       } else {
@@ -115,6 +137,8 @@ register() {
       }
     },
     error: (err:any) => {
+    this.loading = false
+
       console.error(err);
       this.errorMessage =
         err?.error?.message || 'تعذر الاتصال بالخادم، حاول لاحقًا.';
