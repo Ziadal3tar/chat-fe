@@ -166,52 +166,57 @@
 
 
         <!-- Friend List -->
-<div class="friend-scroll flex-grow-1 overflow-auto px-2 py-2">
-  <ng-container *ngIf="activeList.length > 0; else noResults">
-    <div *ngFor="let item of activeList; let i = index"
-      class="friend-item d-flex align-items-center gap-3 p-2 rounded-3 cursorPointer"
-      (click)="openChat(i, activeList)">
+        <div class="friend-scroll flex-grow-1 overflow-auto px-2 py-2">
+          <ng-container *ngIf="activeList.length > 0; else noResults">
+            <div *ngFor="let item of activeList; let i = index"
+              class="friend-item d-flex align-items-center gap-3 p-2 rounded-3 cursorPointer"
+              (click)="openChat(i, activeList)">
 
-      <!-- صورة المستخدم -->
-      <div
-        class="friend-avatar rounded-circle overflow-hidden border"
-        [style.background-image]="'url(' + getProfileImage(item) + ')'">
-      </div>
+              <!-- صورة المستخدم -->
+              <div class="friend-avatar rounded-circle overflow-hidden border"
+                [style.background-image]="'url(' + getProfileImage(item) + ')'">
+              </div>
 
-      <!-- معلومات المستخدم -->
-      <div class="flex-grow-1 d-flex flex-column justify-content-center">
-        <div class="d-flex align-items-center justify-content-between">
-          <p class="m-0 fw-semibold text-truncate">{{ getUserName(item) }}</p>
-          <span *ngIf="isChat(item)" class="text-muted small">
-            {{ item?.lastMessage?.date | messageTime: item?.lastMessage?.time }}
-          </span>
+              <!-- معلومات المستخدم -->
+              <div class="userDetails flex-grow-1 d-flex flex-column justify-content-center">
+                <div class="d-flex align-items-center justify-content-between">
+                  <p class="m-0 fw-semibold text-truncate userName">{{ getUserName(item) }}</p>
+
+                </div>
+                <div class="text-muted-container">
+                  <p *ngIf="isChat(item)" [ngClass]="{'d-none': item?.lastMessage?.fileType == 'image'}"
+                    class="text-muted small text-truncate m-0 flex-grow-1">
+                    {{ item?.lastMessage?.content }}
+                  </p>
+                  <p class="text-muted small text-truncate m-0 flex-grow-1"
+                    *ngIf="item?.lastMessage?.fileType == 'image'">image <i class="fa-solid fa-image"></i></p>
+                  <span *ngIf="item?.unreadCount > 0" class="badge bg-primary ms-2">
+                    {{ item?.unreadCount }}
+                  </span>
+                </div>
+                <div class="d-flex justify-content-end">
+                  <span *ngIf="isChat(item)" class="text-muted small">
+                    {{ item?.lastMessage?.date | messageTime: item?.lastMessage?.time }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- أيقونة الخيارات -->
+              <i class="fa-solid fa-ellipsis-vertical text-secondary opacity-75 fs-6 ms-2"></i>
+            </div>
+          </ng-container>
+
+          <!-- لا توجد نتائج -->
+          <ng-template #noResults>
+            <div class="text-center text-muted py-4">
+              {{
+              searchTerm.trim().length > 0
+              ? 'لا يوجد أصدقاء مطابقين'
+              : 'لا يوجد محادثات'
+              }}
+            </div>
+          </ng-template>
         </div>
-        <div class="d-flex align-items-center justify-content-between">
-          <p *ngIf="isChat(item)" class="text-muted small text-truncate m-0 flex-grow-1">
-            {{ item?.lastMessage?.content }}
-          </p>
-          <span *ngIf="item?.unreadCount > 0" class="badge bg-primary ms-2">
-            {{ item?.unreadCount }}
-          </span>
-        </div>
-      </div>
-
-      <!-- أيقونة الخيارات -->
-      <i class="fa-solid fa-ellipsis-vertical text-secondary opacity-75 fs-6 ms-2"></i>
-    </div>
-  </ng-container>
-
-  <!-- لا توجد نتائج -->
-  <ng-template #noResults>
-    <div class="text-center text-muted py-4">
-      {{
-        searchTerm.trim().length > 0
-          ? 'لا يوجد أصدقاء مطابقين'
-          : 'لا يوجد محادثات'
-      }}
-    </div>
-  </ng-template>
-</div>
 
 
       </div>

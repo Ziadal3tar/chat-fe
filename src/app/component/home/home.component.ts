@@ -69,7 +69,7 @@ activeList: any[] = [];
       .subscribe(() => {
         this.toggleSettings();
         console.log('f');
-        
+
       });
   }
 
@@ -286,7 +286,7 @@ this.searchFriends()
  if (window.innerWidth <= 768) {
     this.chat = 'd-none';
   }else{
-    
+
     this.chat = isSearchOpen ? '' : 'd-none';
   }
     this.searchStyle = isSearchOpen ? 'd-none' : '';
