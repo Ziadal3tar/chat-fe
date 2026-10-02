@@ -1,143 +1,187 @@
-<div class="w-100 border-bottom pb-2 d-flex align-items-center justify-content-between">
-      <h4 class="m-0 fw-bold text-primary">Add Friend</h4>
+<section class="discover-page">
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
 
-  <div class="m-0 p-0 my-auto cursor-pointer backHome" (click)="backHome()">
-    <i class="fa-solid fa-house p-0 m-0"></i>
+  <header class="page-header">
+    <div class="page-title">
+      <span class="eyebrow">Discover</span>
+      <h1>Find people</h1>
+      <p>Search for users and manage connection requests.</p>
+    </div>
+
+    <button class="ghost-button" type="button" (click)="backToFriends()">
+      <i class="fa-solid fa-arrow-left"></i>
+      <span>Friends</span>
+    </button>
+  </header>
+
+  <div *ngIf="errorMessage" class="alert-message">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ errorMessage }}
   </div>
-</div>
 
-<!-- 🔍 مربع البحث -->
-<div class="col-12 border-bottom py-2 m-0">
-  <input
-    type="text"
-    class="w-100 border-0 border-start border-3 bg-transparent p-2"
-    [(ngModel)]="name"
-    (keyup)="search()"
-    placeholder="Search by name..."
-    style="outline: none;"
-  />
-</div>
+  <section class="search-panel">
+    <div class="search-icon">
+      <i class="fa-solid fa-magnifying-glass"></i>
+    </div>
 
-<!-- 👥 قائمة الأصدقاء -->
-<div class="row py-4 m-0">
-  <div
-    class="col-lg-4 col-md-6 col-sm-12 mb-4 d-flex align-items-center justify-content-center"
-    *ngFor="let item of allUser"
-  >
-    <div class="card border-0 shadow-sm rounded-4 text-center w-100 py-3">
-      <!-- صورة المستخدم -->
-      <div
-        [style.backgroundImage]="'url(' + item?.profileImage + ')'"
-        class="userImg mx-auto rounded-circle position-relative mb-3"
-        style="width: 100px; height: 100px; background-size: cover; background-position: center;"
-      >
-        <div
-          class="position-absolute rounded-circle border border-white"
-          [ngClass]="{
-            'bg-success': item.isOnline,
-            'bg-secondary': !item.isOnline
-          }"
-          style="width: 14px; height: 14px; top: 5px; right: 5px;"
-        ></div>
+    <div class="search-content">
+      <span class="search-kicker">DISCOVER YOUR CIRCLE</span>
+      <input
+        type="text"
+        [value]="name"
+        (input)="name=$any($event.target).value;onSearch(name)"
+        placeholder="Search by username..."
+      />
+      <small>Start typing to discover people</small>
+    </div>
+
+    <span *ngIf="loading" class="loading-spinner"></span>
+  </section>
+
+  <section class="results-section">
+    <div class="section-heading">
+      <div>
+        <span class="section-kicker">PEOPLE</span>
+        <h2>Discover people</h2>
+        <p *ngIf="!name">Search results will appear here.</p>
+        <p *ngIf="name">{{ allUser.length }} result{{ allUser.length === 1 ? '' : 's' }}</p>
       </div>
 
-      <!-- معلومات المستخدم -->
-      <h5 class="mb-1">{{ item.userName }}</h5>
-      <p class="text-muted mb-2" style="font-size: 13px;">{{ item.time }}</p>
+      <span class="result-count" *ngIf="name">{{ allUser.length }}</span>
+    </div>
 
-      <div class="text-start px-3 mb-3">
-        <p class="m-0">
-          <i class="fa-solid fa-user-group me-1"></i>
-          {{ item.friends?.length || 0 }} friends
-        </p>
-        <p class="m-0">
-          <i class="fa-solid fa-users me-1"></i>
-          {{ item.friends?.length || 0 }} mutual friends
-        </p>
-      </div>
+    <div *ngIf="!loading && name && allUser.length === 0" class="empty-state">
+      <span class="empty-icon"><i class="fa-solid fa-user-slash"></i></span>
+      <h3>No users found</h3>
+      <p>Try another username.</p>
+    </div>
 
-      <!-- الأزرار -->
+    <div *ngIf="!loading && !name" class="empty-state">
+      <span class="empty-icon"><i class="fa-solid fa-users"></i></span>
+      <h3>Find your next connection</h3>
+      <p>Use the search field above to get started.</p>
+    </div>
 
+    <div *ngIf="allUser.length > 0" class="people-grid">
+      <article class="person-card" *ngFor="let item of allUser">
+        <div class="card-art"></div>
+        <div class="card-glow"></div>
 
+        <div class="person-top">
+          <span class="discover-label">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            Discover
+          </span>
 
+          <span class="status-pill" [class.online]="item.isOnline">
+            <i class="fa-solid fa-circle"></i>
+            {{ item.isOnline ? 'Online' : 'Offline' }}
+          </span>
+        </div>
 
+        <div class="profile-row">
+          <div class="avatar-wrap">
+            <div
+              class="avatar"
+              [style.backgroundImage]="'url(' + item?.profileImage + ')'"
+            >
+              <span class="online-dot" [class.online]="item.isOnline"></span>
+            </div>
+          </div>
 
+          <div class="person-identity">
+            <h3>{{ item.userName }}</h3>
+            <p class="person-meta">{{ item.email || 'Community member' }}</p>
+          </div>
+        </div>
 
+        <div class="user-stats">
+          <span>
+            <i class="fa-solid fa-user-group"></i>
+            {{ item.friends?.length || 0 }} friends
+          </span>
+          <span>
+            <i class="fa-solid fa-users"></i>
+            {{ item.friends?.length || 0 }} mutual
+          </span>
+        </div>
 
+        <div class="card-actions" [ngSwitch]="getFriendStatus(item._id)">
+          <button
+            *ngSwitchCase="'none'"
+            class="primary-button full"
+            type="button"
+            [disabled]="actionId===item._id"
+            (click)="requestAddFriend(item._id,item.userName)"
+          >
+            <i class="fa-solid fa-user-plus"></i>
+            {{ actionId===item._id ? 'Sending...' : 'Add friend' }}
+          </button>
 
+          <button
+            *ngSwitchCase="'pending_sent'"
+            class="ghost-button full"
+            type="button"
+            [disabled]="actionId===item._id"
+            (click)="requestCancel(item._id)"
+          >
+            <i class="fa-solid fa-clock"></i>
+            Request sent
+          </button>
 
+          <ng-container *ngSwitchCase="'pending_received'">
+            <button
+              class="primary-button"
+              type="button"
+              [disabled]="actionId===item._id"
+              (click)="requestAccept(item._id,item.userName)"
+            >
+              <i class="fa-solid fa-check"></i>
+              Accept
+            </button>
 
+            <button
+              class="ghost-danger"
+              type="button"
+              [disabled]="actionId===item._id"
+              (click)="requestReject(item._id)"
+            >
+              <i class="fa-solid fa-xmark"></i>
+              Decline
+            </button>
+          </ng-container>
 
+          <ng-container *ngSwitchCase="'friends'">
+            <button class="ghost-button full" type="button" disabled>
+              <i class="fa-solid fa-check"></i>
+              Friends
+            </button>
 
-<div class="d-flex justify-content-center gap-2 px-3 mt-2">
-  <!-- 🟦 حالة: لسه مش أصدقاء -->
-  <button
-    *ngIf="getFriendStatus(item._id) === 'none'"
-    class="btn btn-primary btn-sm fw-bold col-6"
-    (click)="addFriend(item._id)"
-  >
-    Add Friend
-  </button>
+            <button
+              class="menu-button"
+              type="button"
+              title="Block"
+              (click)="requestBlock(item._id,item.userName)"
+            >
+              <i class="fa-solid fa-ban"></i>
+            </button>
+          </ng-container>
+        </div>
+      </article>
+    </div>
+  </section>
+</section>
 
-  <!-- 🟨 حالة: بعتله طلب -->
-  <button
-    *ngIf="getFriendStatus(item._id) === 'pending_sent'"
-    class="btn btn-outline-secondary btn-sm fw-bold col-6"
-    (click)="cancelRequest(item._id)"
-  >
-    Cancel Request
-  </button>
-
-  <!-- 🟩 حالة: هو اللي باعتلي طلب -->
-  <div
-    *ngIf="getFriendStatus(item._id) === 'pending_received'"
-    class="d-flex justify-content-center gap-2"
-  >
-    <button
-      class="btn btn-success btn-sm px-3 fw-semibold"
-      (click)="acceptRequest(item._id)"
-    >
-      Accept
-    </button>
-    <button
-      class="btn btn-outline-danger btn-sm px-3 fw-semibold"
-      (click)="rejectRequest(item._id)"
-    >
-      Decline
-    </button>
-  </div>
-
-  <!-- 🟩 حالة: أصدقاء بالفعل -->
-  <div
-    *ngIf="getFriendStatus(item._id) === 'friends'"
-    class="d-flex justify-content-center gap-2"
-  >
-    <button class="btn btn-danger btn-sm fw-bold col-5" (click)="blockUser(item._id)">
-      Block
-    </button>
-    <button class="btn btn-outline-primary btn-sm fw-bold col-6" disabled>
-      Friends
-    </button>
-  </div>
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+<div class="modal-backdrop" *ngIf="confirmVisible" (click)="closeConfirmation()">
+  <div class="confirm-modal" (click)="$event.stopPropagation()">
+    <div class="confirm-icon"><i class="fa-solid fa-circle-question"></i></div>
+    <span class="modal-kicker">CONFIRM ACTION</span>
+    <h3>{{ confirmTitle }}</h3>
+    <p>{{ confirmMessage }}</p>
+    <div class="modal-actions">
+      <button class="ghost-button" type="button" (click)="closeConfirmation()">Cancel</button>
+      <button class="primary-button" type="button" (click)="confirm()">Confirm</button>
     </div>
   </div>
 </div>

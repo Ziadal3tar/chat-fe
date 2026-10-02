@@ -1,36 +1,114 @@
-<!-- 🔹 Header -->
-<div class="w-100 border-bottom pb-2 d-flex align-items-center justify-content-between">
- 
-          <h4 class="m-0 fw-bold text-primary">Stars</h4>
+<section class="stars-page">
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
 
-  <div class="m-0 p-0 my-auto cursor-pointer backHome" (click)="backHome()">
-    <i class="fa-solid fa-house p-0 m-0"></i>
-  </div>
-</div>
+  <header class="page-header">
+    <div class="header-left">
+      <span class="eyebrow">Saved messages</span>
+      <h1>Stars</h1>
+      <p>Keep important messages within quick reach.</p>
+    </div>
 
-<!-- 🔹 قائمة العناصر -->
-<div
-  class="star-item row align-items-center justify-content-between bg-light rounded-4 shadow-sm my-3 mx-auto p-3 position-relative overflow-hidden"
-  *ngFor="let dummy of ' '.repeat(8).split(''); let i = index"
->
-  <!-- صورة المستخدم -->
-  <div class="col-md-2 col-sm-12 d-flex flex-column align-items-center justify-content-center text-center mb-3 mb-md-0">
-    <div class="user-img mb-2"></div>
-    <p class="fw-semibold m-0">Ali Ali</p>
-  </div>
+    <button class="icon-button" type="button" (click)="goBack()" aria-label="Back">
+      <i class="fa-solid fa-arrow-left"></i>
+    </button>
+  </header>
 
-  <!-- النص -->
-  <div class="col-md-9 col-sm-12">
-    <p class="m-0 text-muted">
-      Lorem ipsum dolor sit amet consectetur adipisicing elit. Molestiae sapiente impedit repellat saepe voluptatibus
-      exercitationem ipsa officiis quam atque maiores?
-    </p>
+  <div *ngIf="errorMessage" class="feedback error">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ errorMessage }}
   </div>
 
-  <!-- زر الحذف -->
-  <div
-    class="delete-btn col-md-1 col-sm-12 d-flex align-items-center justify-content-center cursor-pointer mt-3 mt-md-0"
-  >
-    <i class="fa-solid fa-trash text-danger fs-5"></i>
+  <section class="intro-card">
+    <div class="intro-art">
+      <div class="intro-orbit orbit-one"></div>
+      <div class="intro-orbit orbit-two"></div>
+      <div class="intro-icon">
+        <i class="fa-solid fa-star"></i>
+      </div>
+    </div>
+
+    <div class="intro-copy">
+      <span class="section-kicker">YOUR COLLECTION</span>
+      <h2>Saved messages</h2>
+      <p>{{items.length}} item{{items.length===1?'':'s'}} in your collection.</p>
+    </div>
+
+    <div class="intro-count">
+      <strong>{{items.length}}</strong>
+      <span>Saved</span>
+    </div>
+  </section>
+
+  <section class="list-card">
+    <div class="section-heading">
+      <div>
+        <span class="section-kicker">BOOKMARKS</span>
+        <h2>Starred content</h2>
+        <p>Messages you decided to keep close.</p>
+      </div>
+      <span class="count-badge">{{items.length}}</span>
+    </div>
+
+    <div *ngIf="loading" class="loading-state">
+      <span class="loading-spinner"></span>
+      <p>Loading your saved messages...</p>
+    </div>
+
+    <div *ngIf="!loading && items.length===0" class="empty-state">
+      <span class="empty-icon"><i class="fa-regular fa-star"></i></span>
+      <h3>No starred messages</h3>
+      <p>Star a message from a conversation and it will appear here.</p>
+    </div>
+
+    <article class="star-item" *ngFor="let item of items">
+      <div class="item-glow"></div>
+
+      <div class="avatar-shell">
+        <div class="avatar" [style.backgroundImage]="'url('+item.image+')'"></div>
+        <span class="saved-dot"><i class="fa-solid fa-star"></i></span>
+      </div>
+
+      <div class="star-copy">
+        <div class="name-row">
+          <strong>{{item.name}}</strong>
+          <span><i class="fa-solid fa-star"></i> Saved</span>
+        </div>
+
+        <p>{{item.text}}</p>
+
+        <div class="item-meta">
+          <span>
+            <i class="fa-solid fa-bookmark"></i>
+            {{item.date || 'Saved message'}} <ng-container *ngIf="item.time">· {{item.time}}</ng-container>
+          </span>
+        </div>
+      </div>
+
+      <button
+        class="delete-button"
+        type="button"
+        (click)="requestDelete(item)"
+        title="Remove"
+        aria-label="Remove saved item"
+      >
+        <i class="fa-solid fa-trash"></i>
+      </button>
+    </article>
+  </section>
+</section>
+
+<div class="modal-backdrop" *ngIf="confirmVisible" (click)="closeConfirmation()">
+  <div class="confirm-modal" (click)="$event.stopPropagation()">
+    <div class="confirm-icon">
+      <i class="fa-solid fa-circle-question"></i>
+    </div>
+    <span class="modal-kicker">CONFIRM ACTION</span>
+    <h3>{{confirmTitle}}</h3>
+    <p>{{confirmMessage}}</p>
+    <div class="modal-actions">
+      <button class="ghost-button" type="button" (click)="closeConfirmation()">Cancel</button>
+      <button class="primary-button" type="button" (click)="confirm()">Confirm</button>
+    </div>
   </div>
 </div>

@@ -1,171 +1,219 @@
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { Subject, debounceTime, distinctUntilChanged, switchMap, takeUntil, of } from 'rxjs';
+
 import { FriendsService } from 'src/app/services/friends.service';
-import { ShareFunctionsService } from './../../services/share-functions.service';
-import { UserService } from './../../services/user.service';
-import { Component, OnInit } from '@angular/core';
 import { SocketService } from 'src/app/services/socket.service';
+import { UserService } from 'src/app/services/user.service';
 
 @Component({
   selector: 'app-add-friend',
   templateUrl: './add-friend.component.html',
   styleUrls: ['./add-friend.component.scss'],
 })
-export class AddFriendComponent implements OnInit {
+export class AddFriendComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  private searchSubject = new Subject<string>();
+
   name = '';
-  allUser: any = [];
-  online: any;
-  userData: any;
+  allUser: any[] = [];
+  userData: any = null;
+  loading = false;
+  actionId: string | null = null;
+  errorMessage = '';
+  confirmVisible = false;
+  confirmTitle = '';
+  confirmMessage = '';
+  confirmAction: (() => void) | null = null;
+
   constructor(
-    private UserService: UserService,
+    private userService: UserService,
     private friendService: FriendsService,
-    private ShareFunctionsService: ShareFunctionsService,
-    private socketService: SocketService
+    private socketService: SocketService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
-    this.UserService.user$.subscribe((data: any) => {
-      this.userData = data;
-      this.socketService.connect(this.userData._id);
-      setTimeout(() => {
-        this.initializeSocketListeners();
-      }, 500); // تأخير بسيط لتأكيد الاتصال
-    });
+    this.userService.user$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((user: any) => {
+        if (!user) return;
+        this.userData = user;
+        this.socketService.connect(user._id);
+      });
+
+    this.searchSubject
+      .pipe(
+        debounceTime(350),
+        distinctUntilChanged(),
+        switchMap((name) => {
+          if (!name.trim()) {
+            this.loading = false;
+            return of({ allUser: [] });
+          }
+          this.loading = true;
+          const token = localStorage.getItem('token');
+          return this.userService.searchUser({ name: name.trim() })
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: (res: any) => {
+          this.allUser = [
+            ...new Map((res?.allUser || []).map((user: any) => [user._id, user])).values(),
+          ];
+          this.loading = false;
+        },
+        error: () => {
+          this.loading = false;
+          this.allUser = [];
+          this.errorMessage = 'Search failed. Please try again.';
+        },
+      });
+
+    this.socketService
+      .listen('friendRequestReceived')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.userService.getUserData());
+
+    this.socketService
+      .listen('friendRequestAccepted')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.userService.getUserData());
+
+    this.socketService
+      .listen('friendRequestRejected')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.userService.getUserData());
   }
-initializeSocketListeners() {
-  this.socketService.listen('friendRequestReceived').subscribe((data: any) => {
-    console.log('📩 Friend Request Received:', data);
-    this.UserService.getUserData();
-  });
 
-  this.socketService.listen('friendRequestAccepted').subscribe((data: any) => {
-    console.log('🎉 Friend Request Accepted:', data);
-    this.UserService.getUserData();
-  });
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
-  this.socketService.listen('friendRequestRejected').subscribe((data: any) => {
-    console.log('🚫 Friend Request Rejected:', data);
-    this.UserService.getUserData();
-  });
-  this.socketService.listen('blockUser').subscribe((data: any) => {
-    console.log('🚫 Friend block u:');
-    this.search()
-  });
-  this.socketService.listen('unBlockUser').subscribe((data: any) => {
-    console.log('🚫 Friend Unblock u:');
-    this.search()
-  });
-}
+  onSearch(value: string): void {
+    this.errorMessage = '';
+    this.searchSubject.next(value);
+  }
 
-  search() {
-    const token = localStorage.getItem('token');
-    const name = this.name.trim();
+  getFriendStatus(userId: string): 'friends' | 'pending_sent' | 'pending_received' | 'none' {
+    if (!this.userData) return 'none';
 
-    if (!name) {
-      this.allUser = [];
-      return;
+    const friends = this.userData.friends || [];
+    const sent = this.userData.friendRequestsSent || [];
+    const received = this.userData.friendRequests || this.userData.receivedRequests || [];
+
+    if (friends.some((friend: any) => this.getId(friend) === userId)) return 'friends';
+
+    if (sent.some((request: any) => this.getId(request?.to) === userId && request.status === 'pending')) {
+      return 'pending_sent';
     }
 
-    this.UserService.searchUser({ name }, token).subscribe({
-      next: (res: any) => {
+    if (received.some((request: any) => this.getId(request?.from) === userId && request.status === 'pending')) {
+      return 'pending_received';
+    }
 
-        this.allUser = [
-          ...new Map(res.allUser.map((user: any) => [user._id, user])).values(),
-        ];
-        console.log(this.allUser);
+    return 'none';
+  }
+
+  private getId(value: any): string | null {
+    if (!value) return null;
+    return typeof value === 'string' ? value : value._id?.toString?.() || null;
+  }
+
+  requestAddFriend(friendId: string, name: string): void { this.openConfirmation('Send friend request?', `Send a request to ${name}?`, () => this.addFriend(friendId)); }
+
+  requestCancel(friendId: string): void { this.openConfirmation('Cancel request?', 'The pending request will be cancelled.', () => this.cancelRequest(friendId)); }
+
+  requestAccept(id: string, name: string): void { this.openConfirmation('Accept request?', `Add ${name} to your friends?`, () => this.acceptRequest(id)); }
+
+  requestReject(id: string): void { this.openConfirmation('Decline request?', 'This friend request will be removed.', () => this.rejectRequest(id)); }
+
+  requestBlock(friendId: string, name: string): void { this.openConfirmation('Block user?', `${name} will be blocked and removed from search results.`, () => this.blockUser(friendId)); }
+
+  addFriend(friendId: string): void {
+    this.actionId = friendId;
+    this.friendService.sendFriendRequest(this.userData._id, friendId).subscribe({
+      next: () => {
+        this.userService.getUserData();
+        this.actionId = null;
       },
-      error: (err) => {
-        console.error('Search error:', err);
+      error: () => {
+        this.actionId = null;
+        this.errorMessage = 'Could not send the friend request.';
       },
     });
-
-
   }
 
-addFriend(friendId: string) {
-  this.friendService.sendFriendRequest(this.userData._id, friendId).subscribe({
-    next: (res) => {
-      console.log('✅ Request sent');
-      this.UserService.getUserData(); // تحديث الحالة
-    },
-    error: (err) => console.error(err),
-  });
-}
-
-acceptRequest(id: string) {
-  this.friendService.acceptFriendRequest(this.userData._id, id).subscribe({
-    next: (res) => {
-      console.log('✅ Request accepted');
-      this.UserService.getUserData(); // تحديث الحالة
-    },
-    error: (err) => console.error(err),
-  });
-}
-
-rejectRequest(id: string) {
-  this.friendService.rejectFriendRequest(this.userData._id, id).subscribe({
-    next: (res) => {
-      console.log('❌ Request rejected');
-      this.UserService.getUserData(); // تحديث الحالة
-    },
-    error: (err) => console.error(err),
-  });
-}
-
-
-  backHome() {
-    this.ShareFunctionsService.sendClickEvent();
+  cancelRequest(friendId: string): void {
+    this.actionId = friendId;
+    this.friendService.cancelFriendRequest(this.userData._id, friendId).subscribe({
+      next: () => {
+        this.userService.getUserData();
+        this.actionId = null;
+      },
+      error: () => {
+        this.actionId = null;
+        this.errorMessage = 'Could not cancel the request.';
+      },
+    });
   }
- getFriendStatus(userId: string): 'friends' | 'pending_sent' | 'pending_received' | 'none' {
-  if (!this.userData) return 'none';
 
-  const friends = this.userData.friends || [];
-  const sent = this.userData.friendRequestsSent || [];
-  const received = this.userData.friendRequests || this.userData.receivedRequests || [];
+  acceptRequest(id: string): void {
+    this.actionId = id;
+    this.friendService.acceptFriendRequest(this.userData._id, id).subscribe({
+      next: () => {
+        this.userService.getUserData();
+        this.actionId = null;
+      },
+      error: () => {
+        this.actionId = null;
+        this.errorMessage = 'Could not accept the request.';
+      },
+    });
+  }
 
-  // ✅ 1) أصدقاء
-  const isFriend = friends.some((f: any) => {
-    const id = (f && f._id) ? f._id.toString() : f?.toString?.();
-    return id === userId;
-  });
-  if (isFriend) return 'friends';
+  rejectRequest(id: string): void {
+    this.actionId = id;
+    this.friendService.rejectFriendRequest(this.userData._id, id).subscribe({
+      next: () => {
+        this.userService.getUserData();
+        this.actionId = null;
+      },
+      error: () => {
+        this.actionId = null;
+        this.errorMessage = 'Could not decline the request.';
+      },
+    });
+  }
 
-  // ✅ 2) أنا اللي بعتله طلب (ولسه pending فقط)
-  const isSent = sent.some((r: any) => {
-    const toId = (r && r.to) ? (r.to._id ? r.to._id.toString() : r.to.toString()) : null;
-    return toId === userId && r.status === 'pending';
-  });
-  if (isSent) return 'pending_sent';
+  blockUser(friendId: string): void {
+    this.actionId = friendId;
+    this.friendService.blockUser(this.userData._id, friendId).subscribe({
+      next: () => {
+        this.allUser = this.allUser.filter((user) => user._id !== friendId);
+        this.userService.getUserData();
+        this.actionId = null;
+      },
+      error: () => {
+        this.actionId = null;
+        this.errorMessage = 'Could not block this user.';
+      },
+    });
+  }
 
-  // ✅ 3) هو اللي بعتلي طلب (ولسه pending فقط)
-  const isReceived = received.some((r: any) => {
-    const fromId = (r && r.from) ? (r.from._id ? r.from._id.toString() : r.from.toString()) : null;
-    return fromId === userId && r.status === 'pending';
-  });
-  if (isReceived) return 'pending_received';
+  openConfirmation(title: string, message: string, action: () => void): void { this.confirmTitle = title; this.confirmMessage = message; this.confirmAction = action; this.confirmVisible = true; }
 
-  // ✅ 4) في حالة الطلب مرفوض أو غير موجود → نرجع none
-  return 'none';
-}
+  closeConfirmation(): void { this.confirmVisible = false; this.confirmAction = null; }
 
+  confirm(): void { const action = this.confirmAction; this.closeConfirmation(); action?.(); }
 
-cancelRequest(friendId: string) {
-  this.friendService.cancelFriendRequest(this.userData._id, friendId).subscribe({
-    next: (res) => {
-      console.log('🚫 Request cancelled');
-      this.UserService.getUserData(); // لتحديث الواجهة بعد الإلغاء
-    },
-    error: (err) => console.error(err),
-  });
-}
+  backToFriends(): void {
+    this.router.navigate(['/settings/friends']);
+  }
 
-blockUser(friendId: string) {
-  this.friendService.blockUser(this.userData._id, friendId).subscribe({
-    next: (res) => {
-      console.log('🚷 User blocked');
-      this.search()
-      this.UserService.getUserData(); // تحديث البيانات
-    },
-    error: (err) => console.error(err),
-  });
-}
-
+  backToSettings(): void {
+    this.router.navigate(['/settings/general']);
+  }
 }

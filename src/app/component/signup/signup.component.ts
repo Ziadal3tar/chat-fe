@@ -1,178 +1,79 @@
-import { AppComponent } from './../../app.component';
-import { UserService } from './../../services/user.service';
-import { Component, ElementRef, OnInit, AfterViewInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { Router } from '@angular/router';
+import { UserService } from './../../services/user.service';
 
 @Component({
   selector: 'app-signup',
   templateUrl: './signup.component.html',
   styleUrls: ['./signup.component.scss'],
 })
-export class SignupComponent implements OnInit {
-  hello = '';
-  loginArabic = 'd-none';
-  loginEnglish = 'd-none';
-  dir: any;
-  colorValue: any;
-  morning = 'url(./assets/img/white-abstract-background_23-2148817571.jpg)';
-  night = 'url(./assets/img/6222603.jpg)';
-  mood = 'morning';
-  language = 'العربية';
-  loading:boolean = false
+export class SignupComponent {
+  userName = '';
+  email = '';
+  phone = '';
+  password = '';
+  confirmPassword = '';
+  loading = false;
+  errorMessage = '';
+  showPassword = false;
+  showConfirmPassword = false;
 
-  userName: any;
-  email: any;
-  phone: any;
-  password: any;
-  confirmPassword: any;
-  constructor(
-    private elem: ElementRef,
-    private UserService: UserService,
-    private Router: Router
-  ) {}
+  constructor(private userService: UserService, private router: Router) {}
 
-  ngOnInit(): void {
-       alert(
-  'Login with\n' +
-  'Email: User@gmail.com\n' +
-  'Password: 123456'
-);
-    if (this.language == 'العربية') {
-      setTimeout(() => {
-        this.hello = 'opacity-0 transition';
-        setTimeout(() => {
-          this.hello = 'd-none';
+  register(): void {
+    if (this.loading) return;
+    this.errorMessage = '';
 
-          setTimeout(() => {
-            this.loginEnglish = 'opacity-0 ';
+    const user = {
+      userName: this.userName.trim(),
+      email: this.email.trim(),
+      phone: this.phone.trim(),
+      password: this.password.trim(),
+    };
 
-            setTimeout(() => {
-              this.loginEnglish = 'opacity-100 transition  ';
-            }, 100);
-          }, 10);
-        }, 501);
-      }, 2000);
-    } else {
-      setTimeout(() => {
-        this.hello = 'opacity-0 transition';
-        setTimeout(() => {
-          this.hello = 'd-none';
-
-          setTimeout(() => {
-            this.loginArabic = 'opacity-0 ';
-            setTimeout(() => {
-              this.loginArabic = 'opacity-100 transition  ';
-            }, 100);
-          }, 10);
-        }, 501);
-      }, 2000);
+    if (!user.userName || !user.email || !user.phone || !user.password || !this.confirmPassword.trim()) {
+      this.errorMessage = 'من فضلك أكمل جميع البيانات المطلوبة.';
+      return;
     }
-  }
-
-errorMessage: string = ''; // متغير لتخزين الخطأ
-
-register() {
-    this.loading = true
-
-  this.errorMessage = ''; // إعادة التهيئة في كل محاولة تسجيل
-  const user = {
-    userName: this.userName?.trim(),
-    email: this.email?.trim(),
-    phone: this.phone?.trim(),
-    password: this.password?.trim(),
-  };
-
-  // ✅ التحقق المبدئي من الفراغ
-  if (!user.userName || !user.email || !user.phone || !user.password) {
-    this.loading = false
-
-    this.errorMessage = 'الرجاء ملء جميع الحقول المطلوبة';
-    return;
-  }
- if (user.userName.length < 3) {
-    this.loading = false
-
-    this.errorMessage ='الاسم يجب أن يكون 3 أحرف على الأقل';
-    return;
-  }
-   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(user.email)) {
-    this.loading = false
-
-    this.errorMessage ='البريد الإلكتروني غير صالح';
-    return;
-  }
-
- const phoneRegex = /^[0-9]{10,15}$/;
-  if (!phoneRegex.test(user.phone)) {
-    this.loading = false
-
-    this.errorMessage ='رقم الهاتف غير صالح';
-    return;
-  }
-
-  // ✅ التحقق من قوة كلمة السر
-  if (user.password.length < 4) {
-    this.loading = false
-
-    this.errorMessage ='كلمة السر يجب أن تكون 6 أحرف على الأقل';
-    return;
-  }
-  if (user.password !== this.confirmPassword) {
-    this.loading = false
-
-    this.errorMessage ='كلمتا السر غير متطابقتين';
-    return;
-  }
-
-  // ✅ استدعاء الـ API
-  this.UserService.register(user).subscribe({
-    next: (data: any) => {
-    this.loading = false
-
-      if (data.status === 'success') {
-        this.Router.navigate(['/login']);
-      } else {
-        this.errorMessage = data.message || 'حدث خطأ غير متوقع';
-      }
-    },
-    error: (err:any) => {
-    this.loading = false
-
-      console.error(err);
-      this.errorMessage =
-        err?.error?.message || 'تعذر الاتصال بالخادم، حاول لاحقًا.';
-    },
-  });
-}
-
-
-  changeMood() {
-    if (this.mood == 'night') {
-      this.mood = 'morning';
-      this.elem.nativeElement.style.setProperty('--bg', this.morning);
-      this.elem.nativeElement.style.setProperty('--bgline', 'rgb(0 0 0 / 20%)');
-    } else {
-      this.mood = 'night';
-      this.elem.nativeElement.style.setProperty('--bg', this.night);
-      this.elem.nativeElement.style.setProperty(
-        '--bgline',
-        'rgb(255, 255, 255)'
-      );
+    if (user.userName.length < 3) {
+      this.errorMessage = 'اسم المستخدم يجب أن يحتوي على 3 أحرف على الأقل.';
+      return;
     }
-  }
-  changeLang() {
-    if (this.loginArabic == 'd-none') {
-      this.loginArabic = '';
-      this.language = 'English';
-      this.dir = 'rtl';
-      this.loginEnglish = 'd-none';
-    } else {
-      this.loginArabic = 'd-none';
-      this.language = 'العربية';
-      this.dir = 'ltr';
-
-      this.loginEnglish = '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email)) {
+      this.errorMessage = 'أدخل بريدًا إلكترونيًا صحيحًا.';
+      return;
     }
+    if (!/^[0-9]{10,15}$/.test(user.phone)) {
+      this.errorMessage = 'أدخل رقم هاتف صحيحًا من 10 إلى 15 رقمًا.';
+      return;
+    }
+    if (user.password.length < 6) {
+      this.errorMessage = 'كلمة المرور يجب أن تحتوي على 6 أحرف على الأقل.';
+      return;
+    }
+    if (user.password !== this.confirmPassword.trim()) {
+      this.errorMessage = 'كلمتا المرور غير متطابقتين.';
+      return;
+    }
+
+    this.loading = true;
+    this.userService.register(user).subscribe({
+      next: (data: any) => {
+        this.loading = false;
+        if (data?.status === 'success') {
+          this.router.navigate(['/login']);
+          return;
+        }
+        this.errorMessage = data?.message || 'تعذر إنشاء الحساب.';
+      },
+      error: (err: any) => {
+        this.loading = false;
+        this.errorMessage = err?.error?.message || 'تعذر الاتصال بالخادم. حاول مرة أخرى.';
+      },
+    });
+  }
+
+  goToLogin(): void {
+    this.router.navigate(['/login']);
   }
 }

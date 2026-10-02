@@ -1,47 +1,74 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, ReplaySubject, switchMap } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
+import { environment } from 'src/environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class SocketService {
-  socket!: Socket;
-  constructor() {
-//    this.socket = io('https://your-backend-url.up.railway.app', {
-//   transports: ['websocket', 'polling'],
-// });
-  }
-  connect(userId: string): void {
-   this.socket = io('https://chat-be-px76.onrender.com', {
-  transports: ['websocket', 'polling'],
-});
-    this.socket.emit('userOnline', userId);
-  }
+  public socket?: Socket;
+  private readonly socketSubject = new ReplaySubject<Socket>(1);
 
-  onMessageReceived(callback: (msg: any) => void): void {
-    this.socket.on('receiveMessage', callback);
+  private readonly socketUrl = environment.socketUrl;
+
+  connect(_userId?: string): void {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      return;
+    }
+
+    if (this.socket?.connected) {
+      return;
+    }
+
+    this.socket = io(this.socketUrl, {
+      auth: {
+        token,
+      },
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+    });
+
+    this.socketSubject.next(this.socket);
   }
 
   disconnect(): void {
+    if (!this.socket) return;
+
     this.socket.disconnect();
+    this.socket = undefined;
   }
 
-    emit(event: string, data: any) {
+  emit(event: string, data: any = {}): void {
+    if (!this.socket) return;
     this.socket.emit(event, data);
   }
 
-  // ✅ استقبال الرسائل
-  on(event: string, callback: any) {
+  on(event: string, callback: (data: any) => void): void {
+    if (!this.socket) return;
     this.socket.on(event, callback);
   }
 
-   listen(eventName:any){
-    return new Observable((Subscriber)=>{
-      this.socket.on(eventName,(data:any)=>{
-        Subscriber.next(data)
-      })
+  listen<T = any>(eventName: string): Observable<T> {
+    return this.socketSubject.pipe(
+      switchMap(
+        (socket) =>
+          new Observable<T>((subscriber) => {
+            const handler = (data: T) => subscriber.next(data);
+            socket.on(eventName, handler);
 
-    })
+            return () => {
+              socket.off(eventName, handler);
+            };
+          })
+      )
+    );
   }
+
+  get connected(): boolean {
+    return !!this.socket?.connected;
+  }
+
 }

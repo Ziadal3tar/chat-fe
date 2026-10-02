@@ -1,66 +1,58 @@
-import { FriendsComponent } from './../friends/friends.component';
-import { ShareFunctionsService } from './../../services/share-functions.service';
-import { HomeComponent } from './../home/home.component';
 import { Component, ElementRef, Input, OnInit, ViewChild } from '@angular/core';
 import { UserService } from 'src/app/services/user.service';
+import { ShareFunctionsService } from './../../services/share-functions.service';
 
 @Component({
   selector: 'app-setting',
   templateUrl: './setting.component.html',
   styleUrls: ['./setting.component.scss'],
-  providers: [HomeComponent],
 })
 export class SettingComponent implements OnInit {
-  @ViewChild('name', { read: ElementRef, static: false }) name:
-    | ElementRef
-    | any;
-  @ViewChild('pass', { read: ElementRef, static: false }) pass:
-    | ElementRef
-    | any;
-  @ViewChild('cPass', { read: ElementRef, static: false }) cPass:
-    | ElementRef
-    | any;
-  @ViewChild('status', { read: ElementRef, static: false }) status:
-    | ElementRef
-    | any;
+  @ViewChild('name', { read: ElementRef, static: false }) name!: ElementRef;
+  @ViewChild('status', { read: ElementRef, static: false }) status!: ElementRef;
+
+  @Input() setting: any;
 
   disabled = 'disabled';
-  @Input() setting: any;
   userData: any;
   settingStyle = '';
-  data: any;
-  constructor(
-    private ShareFunctionsServic: ShareFunctionsService,
-    private UserService: UserService,
+  data: any = { mood: 'morning' };
 
-    private elem: ElementRef
+  constructor(
+    private shareFunctionsService: ShareFunctionsService,
+    private userService: UserService,
+    private elementRef: ElementRef
   ) {}
 
   ngOnInit(): void {
-    this.UserService.user$.subscribe((data: any) => {
+    this.userService.user$.subscribe((data: any) => {
       this.userData = data;
     });
-    this.data = this.ShareFunctionsServic.getData();
 
-    if (this.data.mood == 'night') {
-      this.elem.nativeElement.style.setProperty('--bgcolor', 'rgb(0 0 0)');
-      this.elem.nativeElement.style.setProperty(
-        '--color',
-        'rgb(255, 255, 255)'
-      );
-    } else {
-      this.elem.nativeElement.style.setProperty(
-        '--bgcolor',
-        'rgb(240, 240, 240)'
-      );
-      this.elem.nativeElement.style.setProperty('--color', 'rgb(0 0 0)');
-    }
+    this.data = this.shareFunctionsService.getData() || this.data;
+    this.applyTheme(this.data?.mood);
   }
-  actionInput(type: any) {
-    if (type == 'name') {
-      this.name.nativeElement.classList.remove('disabled');
-    } else {
-      this.status.nativeElement.classList.remove('disabled');
-    }
+
+  private applyTheme(mood: string): void {
+    const isNight = mood === 'night';
+
+    this.elementRef.nativeElement.style.setProperty(
+      '--bgcolor',
+      isNight ? 'rgb(0 0 0)' : 'rgb(240 240 240)'
+    );
+
+    this.elementRef.nativeElement.style.setProperty(
+      '--color',
+      isNight ? 'rgb(255 255 255)' : 'rgb(0 0 0)'
+    );
+  }
+
+  actionInput(type: 'name' | 'status'): void {
+    const target = type === 'name' ? this.name : this.status;
+
+    if (!target?.nativeElement) return;
+
+    target.nativeElement.classList.remove('disabled');
+    target.nativeElement.focus();
   }
 }

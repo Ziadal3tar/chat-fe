@@ -1,86 +1,298 @@
-<!-- 🔹 Header -->
-<div class="w-100 border-bottom pb-2 d-flex align-items-center justify-content-between">
+<section class="reminders-page">
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
 
-  <h4 class="m-0 fw-bold text-primary">Reminder</h4>
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">Productivity</span>
+      <h1>Plans</h1>
+      <p>Schedule reminders for sending, replying, or sending a message automatically.</p>
+    </div>
 
-  <div class="m-0 p-0 my-auto cursor-pointer backHome" (click)="backHome()">
-    <i class="fa-solid fa-house p-0 m-0"></i>
+    <button class="icon-button" type="button" (click)="goBack()" aria-label="Back">
+      <i class="fa-solid fa-arrow-left"></i>
+    </button>
+  </header>
+
+  <div *ngIf="errorMessage" class="feedback error">
+    <span><i class="fa-solid fa-circle-exclamation"></i></span>
+    {{errorMessage}}
   </div>
-</div>
 
-<!-- 🔹 نوع التذكير -->
-<div class="row border-bottom mx-0 py-3 align-items-center">
-  <div class="col-md-4 col-sm-12 mb-3">
-    <p class="mb-2 fw-semibold border-start ps-2">Type</p>
-    <div class="d-flex border rounded-pill overflow-hidden text-center">
-      <div (click)="reply = true; send = false" [ngClass]="{ 'bg-success text-white': reply }"
-        class="col-6 p-2 cursor-pointer border-end transition">
+  <section class="composer-card">
+    <div class="card-title">
+      <span class="heading-icon"><i class="fa-regular fa-clock"></i></span>
+      <div>
+        <span class="section-kicker">NEW PLAN</span>
+        <h2>Create a plan</h2>
+        <p>Choose what should happen at the selected time.</p>
+      </div>
+    </div>
+
+    <div class="type-switch">
+      <button type="button" [class.active-reply]="reply" (click)="selectType('Reply')">
+        <i class="fa-solid fa-reply"></i>
         Reply
-      </div>
-      <div (click)="send = true; reply = false" [ngClass]="{ 'bg-primary text-white': send }"
-        class="col-6 p-2 cursor-pointer transition">
-        Send
+      </button>
+
+      <button type="button" [class.active-send]="send" (click)="selectType('Send')">
+        <i class="fa-solid fa-paper-plane"></i>
+        Send reminder
+      </button>
+
+      <button type="button" [class.active-scheduled]="scheduled" (click)="selectType('Scheduled')">
+        <i class="fa-regular fa-calendar-check"></i>
+        Scheduled message
+      </button>
+    </div>
+
+    <div class="selected-plan">
+      <span class="selected-plan-icon">
+        <i
+          class="fa-solid"
+          [ngClass]="scheduled ? 'fa-calendar-check' : (send ? 'fa-paper-plane' : 'fa-reply')"
+        ></i>
+      </span>
+      <div>
+        <small>SELECTED ACTION</small>
+        <strong>{{typeLabel}}</strong>
       </div>
     </div>
-  </div>
 
-  <div class="col-md-8 col-sm-12">
-    <p class="mb-2 fw-semibold border-start ps-2">For</p>
-    <input type="text" class="form-control rounded-pill border-0 border-bottom shadow-sm"
-      placeholder="Name, email, or phone" />
-  </div>
-</div>
+    <div class="form-grid">
+      <label class="friend-field">
+        <span>For</span>
 
-<!-- 🔹 تفاصيل التذكير -->
-<div class="row my-4">
-  <div class="col-md-8 col-sm-12 mb-3">
-    <p class="mb-2 fw-semibold border-start ps-2">Description</p>
-    <textarea name="explained" class="form-control rounded-3 border-0 border-bottom shadow-sm" rows="5"
-      placeholder="Explain your reminder..."></textarea>
-  </div>
+        <div class="friend-picker">
+          <div class="field-shell" [class.has-selection]="selectedFriend">
+            <i class="fa-solid fa-user"></i>
 
-  <div class="col-md-4 col-sm-12">
-    <p class="mb-2 fw-semibold border-start ps-2">Date & Time</p>
-    <input type="date" [(ngModel)]="date" class="form-control mb-2 rounded-pill border-0 border-bottom shadow-sm" />
-    <input type="time" [(ngModel)]="time" class="form-control rounded-pill border-0 border-bottom shadow-sm" />
+            <input
+              [value]="target"
+              (input)="onTargetInput($any($event.target).value)"
+              (focus)="onTargetFocus()"
+              (blur)="onTargetBlur()"
+              type="text"
+              autocomplete="off"
+              placeholder="Start typing your friend's name..."
+            />
 
-    <div class="text-center mt-4">
-      <button class="btn btn-primary fw-semibold px-4 rounded-pill" (click)="vv()">Add</button>
+            <button
+              *ngIf="selectedFriend"
+              class="clear-friend"
+              type="button"
+              (mousedown)="$event.preventDefault()"
+              (click)="removeSelectedFriend()"
+              aria-label="Clear selected friend"
+              title="Clear"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div
+            class="friend-suggestions"
+            *ngIf="friendSearchFocused && (friendSuggestions.length > 0 || friendsLoading)"
+          >
+            <div *ngIf="friendsLoading" class="friend-loading">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+              Searching friends...
+            </div>
+
+            <button
+              *ngFor="let friend of friendSuggestions"
+              type="button"
+              class="friend-option"
+              (mousedown)="$event.preventDefault()"
+              (click)="selectFriend(friend)"
+            >
+              <span class="friend-avatar">
+                <img *ngIf="friend.profileImage" [src]="friend.profileImage" [alt]="friend.userName">
+                <span *ngIf="!friend.profileImage">
+                  {{ friend.userName?.charAt(0)?.toUpperCase() || '?' }}
+                </span>
+                <span class="online-dot" [class.online]="friend.isOnline"></span>
+              </span>
+
+              <span class="friend-info">
+                <strong>{{friend.userName}}</strong>
+                <small>{{friend.email || friend.phone || 'Friend'}}</small>
+              </span>
+
+              <i class="fa-solid fa-check select-icon"></i>
+            </button>
+          </div>
+        </div>
+
+        <small class="field-help">
+          Start typing to find one of your friends, then select the person.
+        </small>
+
+        <div class="selected-friend" *ngIf="selectedFriend">
+          <span class="friend-avatar mini">
+            <img
+              *ngIf="selectedFriend.profileImage"
+              [src]="selectedFriend.profileImage"
+              [alt]="selectedFriend.userName"
+            >
+            <span *ngIf="!selectedFriend.profileImage">
+              {{ selectedFriend.userName?.charAt(0)?.toUpperCase() || '?' }}
+            </span>
+            <span class="online-dot" [class.online]="selectedFriend.isOnline"></span>
+          </span>
+
+          <div>
+            <small>SELECTED FRIEND</small>
+            <strong>{{selectedFriend.userName}}</strong>
+          </div>
+
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+      </label>
+
+      <label>
+        <span>Date</span>
+        <div class="field-shell">
+          <i class="fa-regular fa-calendar"></i>
+          <input [(ngModel)]="date" [min]="minDate" type="date">
+        </div>
+      </label>
+
+      <label>
+        <span>Time</span>
+        <div class="field-shell">
+          <i class="fa-regular fa-clock"></i>
+          <input [(ngModel)]="time" type="time">
+        </div>
+      </label>
+
+      <label class="wide">
+        <span>{{scheduled ? 'Message' : 'Reminder note'}}</span>
+        <div class="field-shell textarea-shell">
+          <i class="fa-regular fa-note-sticky"></i>
+          <textarea
+            [(ngModel)]="description"
+            rows="3"
+            [placeholder]="descriptionPlaceholder"
+            maxlength="5000"
+          ></textarea>
+        </div>
+        <small class="field-help">
+          {{scheduled
+            ? 'This exact text will be sent automatically at the planned time.'
+            : 'This note will appear inside the reminder notification when the plan is due.'}}
+        </small>
+      </label>
+    </div>
+
+    <div class="reminder-preview">
+      <span class="preview-icon">
+        <i class="fa-regular fa-bell"></i>
+      </span>
+
+      <div>
+        <small>REMINDER PREVIEW</small>
+        <p>{{reminderPreview}}</p>
+      </div>
+    </div>
+
+    <div class="composer-actions">
+      <button class="primary-button" type="button" (click)="requestAdd()" [disabled]="saving">
+        <i class="fa-solid" [ngClass]="saving ? 'fa-spinner fa-spin' : 'fa-calendar-plus'"></i>
+        {{saving ? 'Creating...' : 'Create plan'}}
+      </button>
+    </div>
+
+    <p class="local-note">
+      <i class="fa-solid fa-shield-halved"></i>
+      Plans are stored on the server and executed by the backend scheduler.
+    </p>
+  </section>
+
+  <section class="list-card">
+    <div class="section-heading">
+      <div>
+        <span class="section-kicker">YOUR TIMELINE</span>
+        <h2>Your plans</h2>
+        <p>{{reminders.length}} saved plan{{reminders.length===1?'':'s'}}</p>
+      </div>
+      <span class="count-badge">{{reminders.length}}</span>
+    </div>
+
+    <div *ngIf="loading" class="loading-state">
+      <span class="loading-spinner"></span>
+      <p>Loading plans...</p>
+    </div>
+
+    <div *ngIf="!loading && reminders.length===0" class="empty-state">
+      <span><i class="fa-regular fa-calendar-check"></i></span>
+      <h3>No plans yet</h3>
+      <p>Create a reminder or schedule a message above.</p>
+    </div>
+
+    <article class="reminder-item" *ngFor="let item of reminders">
+      <div class="timeline-line"></div>
+
+      <div
+        class="reminder-icon"
+        [class.send]="item.action === 'send_reminder'"
+        [class.scheduled]="item.action === 'scheduled_message'"
+      >
+        <i
+          class="fa-solid"
+          [ngClass]="
+            item.action === 'scheduled_message'
+              ? 'fa-paper-plane'
+              : (item.action === 'send_reminder' ? 'fa-arrow-up' : 'fa-reply')
+          "
+        ></i>
+      </div>
+
+      <div class="reminder-copy">
+        <div class="item-head">
+          <span class="type-label">
+            {{
+              item.action === 'scheduled_message'
+                ? 'Scheduled message'
+                : (item.action === 'send_reminder' ? 'Send reminder' : 'Reply reminder')
+            }}
+          </span>
+
+          <strong>{{item.target?.userName || item.target?.email || 'Friend'}}</strong>
+        </div>
+
+        <p>{{item.content || 'No note provided.'}}</p>
+
+        <small>
+          <i class="fa-regular fa-calendar"></i>
+          {{item.scheduledAt | date:'medium'}}
+          · {{item.status}}
+        </small>
+      </div>
+
+      <button
+        *ngIf="item.status === 'pending'"
+        class="delete-button"
+        type="button"
+        (click)="requestDelete(item._id)"
+        title="Cancel"
+        aria-label="Cancel plan"
+      >
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </article>
+  </section>
+</section>
+
+<div class="modal-backdrop" *ngIf="confirmVisible" (click)="closeConfirmation()">
+  <div class="confirm-modal" (click)="$event.stopPropagation()">
+    <div class="confirm-icon"><i class="fa-solid fa-circle-question"></i></div>
+    <span class="modal-kicker">CONFIRM ACTION</span>
+    <h3>{{confirmTitle}}</h3>
+    <p>{{confirmMessage}}</p>
+    <div class="modal-actions">
+      <button class="ghost-button" type="button" (click)="closeConfirmation()">Cancel</button>
+      <button class="primary-button" type="button" (click)="confirm()">Confirm</button>
     </div>
   </div>
-</div>
-
-<!-- 🔹 عرض التذكيرات -->
-<div *ngFor="let dummy of ' '.repeat(8).split(''); let i = index"
-  class="position-relative w-100 rounded-4 overflow-hidden bg-light py-4 px-3 mb-3 shadow-sm reminder-item">
-  <i class="fa-solid fa-paper-plane position-absolute top-0 start-0 bg-primary text-white p-2"
-    style="border-radius: 0 0 50% 0;"></i>
-
-  <i class="fa-solid fa-trash position-absolute top-0 end-0 bg-danger text-white p-2 cursor-pointer"
-    style="border-radius: 0 0 0 50%;"></i>
-
-  <div class="row align-items-center mb-3">
-    <div class="col-md-6 col-sm-12">
-      <h5 class="fw-semibold m-0">You must send to Muhammad</h5>
-    </div>
-    <div class="col-md-6 col-sm-12 d-flex justify-content-center justify-content-md-end gap-3 mt-3 mt-md-0">
-      <div class="time-box">
-        <p class="label">Day</p>
-        <p class="value">555</p>
-      </div>
-      <div class="time-box">
-        <p class="label">Hour</p>
-        <p class="value">17</p>
-      </div>
-      <div class="time-box">
-        <p class="label">Min</p>
-        <p class="value">48</p>
-      </div>
-    </div>
-  </div>
-
-  <p class="m-0 text-muted">
-    Lorem ipsum dolor sit amet, consectetur adipisicing elit. Adipisci blanditiis pariatur nobis. Dicta aliquam
-    reprehenderit.
-  </p>
 </div>

@@ -33,14 +33,14 @@ export class AppComponent {
 
 
 
-    setTimeout(() => {
+    // setTimeout(() => {
 
-      if (this.socketService.socket) {
-        this.initializeSocketListeners();
-      } else {
-        console.error('Socket not initialized!');
-      }
-    }, 500); // تأخير بسيط لتأكيد الاتصال
+    //   if (this.socketService.socket) {
+    //     this.initializeSocketListeners();
+    //   } else {
+    //     console.error('Socket not initialized!');
+    //   }
+    // }, 500); // تأخير بسيط لتأكيد الاتصال
 
   }
 

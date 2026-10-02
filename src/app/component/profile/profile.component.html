@@ -1,53 +1,339 @@
-<div *ngIf="!isEditing" class="profile-container w-100 h-100 d-flex flex-column p-3">
-  <!-- Header -->
-  <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-4">
-    <h4 class="m-0 fw-bold text-primary">Profile</h4>
-    <button class="btn btn-outline-secondary rounded-circle" (click)="backHome()">
-      <i class="fa-solid fa-house"></i>
-    </button>
-  </div>
+<div class="profile-page">
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <div class="ambient ambient-three"></div>
 
-  <!-- Profile Info -->
-  <div class="row justify-content-center align-items-center text-center flex-wrap">
-    <div class="col-lg-4 col-md-5 col-sm-12 mb-3 d-flex justify-content-center imageBox">
-      <div class="user-img position-relative" [style.background]="'url(' + userData?.profileImage + ')'">
+  <header class="page-header">
+    <div class="header-left">
+      <button type="button" class="icon-button" (click)="goBack()" aria-label="Back to settings">
+        <i class="fa-solid fa-arrow-left"></i>
+      </button>
+
+      <div class="header-copy">
+        <span class="eyebrow">ACCOUNT SPACE</span>
+        <h1>Profile</h1>
+        <p>Manage how your account appears to the people around you.</p>
       </div>
     </div>
 
-    <div class="col-lg-6 col-md-7 col-sm-12 text-center text-md-start">
-      <h5 class="fw-bold mb-1">{{ userData?.userName || 'User Name' }}</h5>
-      <p class="text-muted m-0">{{ userData?.email || 'example@email.com' }}</p>
-      <p class="text-muted m-0 small">{{ userData?.bio || 'No bio available' }}</p>
-    </div>
+    <button type="button" class="home-button" (click)="goHome()">
+      <i class="fa-solid fa-house"></i>
+      <span>Home</span>
+    </button>
+  </header>
+
+  <div *ngIf="successMessage" class="alert-message success">
+    <span class="alert-icon"><i class="fa-solid fa-circle-check"></i></span>
+    <span>{{ successMessage }}</span>
+    <span class="alert-line"></span>
   </div>
 
-  <!-- Optional actions -->
-  <div class="mt-5 d-flex flex-wrap justify-content-center gap-3">
-    <button class="btn btn-primary px-4" (click)="toggleEdit()">
-      <i class="fa-solid fa-pen me-2"></i>Edit Profile
-    </button>
-
-
-
-    <button class="btn btn-outline-danger px-4">
-      <i class="fa-solid fa-trash me-2"></i>Delete Account
-    </button>
+  <div *ngIf="errorMessage" class="alert-message error">
+    <span class="alert-icon"><i class="fa-solid fa-circle-exclamation"></i></span>
+    <span>{{ errorMessage }}</span>
+    <span class="alert-line"></span>
   </div>
-</div>
 
-<div *ngIf="isEditing" class="mt-3">
-  <form (ngSubmit)="updateProfile()" #editForm="ngForm">
-    <div class="mb-3">
-      <label class="form-label">Name</label>
-      <input type="text" [(ngModel)]="userData.userName" name="userName" class="form-control" />
-    </div>
+  <ng-container *ngIf="userData; else loadingState">
+    <section class="profile-hero card">
+      <div class="cover">
+        <div class="cover-grid"></div>
+        <span class="cover-orb orb-one"></span>
+        <span class="cover-orb orb-two"></span>
+        <span class="cover-shine"></span>
 
-    <div class="mb-3">
-      <label class="form-label">Profile Image</label>
-      <input type="file" (change)="onFileSelected($event)" class="form-control" />
-    </div>
+        <div class="cover-label">
+          <i class="fa-solid fa-sparkles"></i>
+          <span>Personal profile</span>
+        </div>
+      </div>
 
-    <button type="submit" class="btn btn-success me-2">Save</button>
-    <button type="button" class="btn btn-secondary" (click)="toggleEdit()">Cancel</button>
-  </form>
+      <div class="hero-content">
+        <div class="avatar-wrapper">
+          <div class="avatar-ring">
+            <img
+              class="avatar"
+              [src]="userData.profileImage || 'assets/img/Hello-rafiki (3).svg'"
+              [alt]="userData.userName || 'Profile image'"
+            />
+          </div>
+          <span class="online-dot" aria-label="Online"></span>
+        </div>
+
+        <div class="identity">
+          <div class="identity-topline">
+            <span class="profile-chip">
+              <span class="chip-dot"></span>
+              Active account
+            </span>
+
+            <span class="profile-meta">
+              <i class="fa-solid fa-shield-halved"></i>
+              Private profile
+            </span>
+          </div>
+
+          <div class="identity-heading">
+            <div class="identity-main">
+              <h2>{{ userData.userName || 'User Name' }}</h2>
+              <p class="identity-email">
+                <i class="fa-solid fa-at"></i>
+                {{ userData.email || 'No email available' }}
+              </p>
+            </div>
+
+            <button type="button" class="primary-button" (click)="startEditing()">
+              <i class="fa-solid fa-pen"></i>
+              <span>Edit profile</span>
+            </button>
+          </div>
+
+          <p class="bio">
+            {{ userData.bio || 'Tell people a little about yourself.' }}
+          </p>
+        </div>
+      </div>
+
+      <div class="hero-footer">
+        <div class="hero-footer-item">
+          <span class="footer-icon"><i class="fa-solid fa-user-check"></i></span>
+          <div>
+            <span>Profile status</span>
+            <strong>Active &amp; visible</strong>
+          </div>
+        </div>
+
+        <div class="hero-footer-item">
+          <span class="footer-icon"><i class="fa-solid fa-lock"></i></span>
+          <div>
+            <span>Account mode</span>
+            <strong>Personal</strong>
+          </div>
+        </div>
+
+        <div class="hero-footer-item footer-note">
+          <i class="fa-solid fa-circle-info"></i>
+          <span>Your account details stay in one place.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-grid" *ngIf="!isEditing">
+      <article class="card info-card">
+        <div class="card-heading">
+          <div>
+            <span class="section-label">ACCOUNT</span>
+            <h3>Account information</h3>
+            <p>A quick overview of your account details.</p>
+          </div>
+
+          <div class="heading-icon purple">
+            <i class="fa-solid fa-user-circle"></i>
+          </div>
+        </div>
+
+        <div class="info-list">
+          <div class="info-row">
+            <div class="row-icon blue"><i class="fa-solid fa-user"></i></div>
+            <div class="row-copy">
+              <span>Username</span>
+              <strong>{{ userData.userName || 'Not set' }}</strong>
+            </div>
+            <span class="row-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+          </div>
+
+          <div class="info-row">
+            <div class="row-icon violet"><i class="fa-solid fa-envelope"></i></div>
+            <div class="row-copy">
+              <span>Email</span>
+              <strong>{{ userData.email || 'Not available' }}</strong>
+            </div>
+            <span class="row-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+          </div>
+
+          <div class="info-row">
+            <div class="row-icon green"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="row-copy">
+              <span>Account status</span>
+              <strong class="status-text">Active</strong>
+            </div>
+            <span class="status-pill">Verified</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card about-card">
+        <div class="card-heading">
+          <div>
+            <span class="section-label">ABOUT</span>
+            <h3>Your profile</h3>
+            <p>Keep your public-facing details clear and recognizable.</p>
+          </div>
+
+          <div class="heading-icon blue">
+            <i class="fa-solid fa-id-card"></i>
+          </div>
+        </div>
+
+        <div class="about-content">
+          <div class="about-item">
+            <div class="about-item-top">
+              <span>Bio</span>
+              <span class="about-count">{{ userData.bio ? userData.bio.length : 0 }} chars</span>
+            </div>
+            <p>{{ userData.bio || 'No bio has been added yet.' }}</p>
+          </div>
+
+          <div class="profile-tip">
+            <span class="tip-icon"><i class="fa-solid fa-lightbulb"></i></span>
+            <div>
+              <strong>Make your profile feel personal</strong>
+              <p>Use a clear photo and a short bio so friends can recognize you quickly.</p>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="soft-action" (click)="startEditing()">
+          <span><i class="fa-solid fa-wand-magic-sparkles"></i> Refine your profile</span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </article>
+    </section>
+
+    <section class="card edit-card" *ngIf="isEditing">
+      <div class="edit-card-top">
+        <div class="card-heading">
+          <div>
+            <span class="section-label">EDIT PROFILE</span>
+            <h3>Update your information</h3>
+            <p>Refresh your profile image and username without leaving this page.</p>
+          </div>
+        </div>
+
+        <span class="editing-badge">
+          <i class="fa-solid fa-pen-to-square"></i>
+          Editing mode
+        </span>
+      </div>
+
+      <form (ngSubmit)="updateProfile()">
+        <div class="edit-layout">
+          <div class="image-editor">
+            <div class="preview-label">
+              <span>Profile image</span>
+              <i class="fa-solid fa-camera"></i>
+            </div>
+
+            <div class="preview-shell">
+              <span class="preview-glow"></span>
+              <div class="preview-wrapper">
+                <img
+                  class="preview-image"
+                  [src]="imagePreview || userData.profileImage || 'assets/img/Hello-rafiki (3).svg'"
+                  [alt]="userData.userName || 'Profile image'"
+                />
+              </div>
+            </div>
+
+            <label class="upload-button">
+              <i class="fa-solid fa-camera"></i>
+              Change photo
+              <input type="file" accept="image/*" (change)="onFileSelected($event)" hidden />
+            </label>
+
+            <p class="upload-hint">Choose a clear, recognizable image for your profile.</p>
+          </div>
+
+          <div class="form-fields">
+            <div class="form-intro">
+              <span class="mini-icon"><i class="fa-solid fa-sliders"></i></span>
+              <div>
+                <strong>Profile details</strong>
+                <p>Simple changes, instantly reflected across your account.</p>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="userName">Username</label>
+              <div class="input-wrapper">
+                <span class="input-icon"><i class="fa-solid fa-user"></i></span>
+                <input
+                  id="userName"
+                  type="text"
+                  [(ngModel)]="userData.userName"
+                  name="userName"
+                  autocomplete="username"
+                  maxlength="50"
+                />
+                <span class="input-limit">50</span>
+              </div>
+            </div>
+
+
+            <div class="form-group bio-field">
+              <div class="label-row">
+                <label for="bio">Bio</label>
+                <span>{{ (userData.bio || '').length }}/500</span>
+              </div>
+
+              <div class="input-wrapper textarea-wrapper">
+                <span class="input-icon textarea-icon">
+                  <i class="fa-solid fa-quote-left"></i>
+                </span>
+                <textarea
+                  id="bio"
+                  [(ngModel)]="userData.bio"
+                  name="bio"
+                  maxlength="500"
+                  rows="4"
+                  placeholder="Tell people a little about yourself..."
+                ></textarea>
+              </div>
+
+              <small>
+                <i class="fa-solid fa-circle-info"></i>
+                A short bio appears on your profile and helps friends recognize you.
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label>Email</label>
+              <div class="input-wrapper disabled-input">
+                <span class="input-icon"><i class="fa-solid fa-envelope"></i></span>
+                <input type="email" [value]="userData.email || ''" disabled />
+                <span class="locked-icon"><i class="fa-solid fa-lock"></i></span>
+              </div>
+              <small>
+                <i class="fa-solid fa-circle-info"></i>
+                Email changes are not available from this screen.
+              </small>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="secondary-button" (click)="cancelEditing()">
+                <i class="fa-solid fa-xmark"></i>
+                Cancel
+              </button>
+
+              <button type="submit" class="primary-button" [disabled]="isLoading">
+                <i *ngIf="!isLoading" class="fa-solid fa-check"></i>
+                <i *ngIf="isLoading" class="fa-solid fa-spinner fa-spin"></i>
+                {{ isLoading ? 'Saving...' : 'Save changes' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </section>
+  </ng-container>
+
+  <ng-template #loadingState>
+    <section class="loading-card card">
+      <div class="loading-orbit">
+        <div class="spinner"></div>
+      </div>
+      <span class="loading-label">PROFILE</span>
+      <p>Loading your profile...</p>
+    </section>
+  </ng-template>
 </div>

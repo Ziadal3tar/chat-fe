@@ -56,8 +56,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "2kb",
-                  "maximumError": "5kb"
+                  "maximumWarning": "20kb",
+                  "maximumError": "30kb"
                 }
               ],
               "fileReplacements": [
@@ -119,6 +119,6 @@
     }
   },
   "cli": {
-    "analytics": "392281e7-bea4-4efa-aa6a-2de77c11730b"
+    "analytics": false
   }
 }

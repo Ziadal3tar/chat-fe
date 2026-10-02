@@ -1,217 +1,260 @@
-<div [ngClass]="{'bg-light ': mood == 'night','bg-main text-white ':mood == 'morning'}"
-class="col-12 row m-0 text-black d-flex align-items-center  py-1 ">
+<div class="auth-page">
+  <section class="auth-shell">
 
-
-<div class=" col-12 d-flex align-items-center justify-content-around  ">
-
-  <div (click)="changeMood()"
-    [ngClass]="{'justify-content-end text-white': mood == 'morning','justify-content-start text-black':mood == 'night'}"
-    style="width:45px; height: 20px; background-color: transparent; border: solid 1px black; cursor: pointer;"
-    class=" transition rounded-5 d-flex align-items-center  p-2 my-auto position-relative ">
-
-    <i style="font-size: 13px;" [ngClass]="{'fa-sun': mood == 'morning',' fa-moon':mood == 'night'}"
-      class="fa-solid transition text-black position-absolute  "></i>
-  </div>
-
-  <p style="cursor: pointer;" (click)="changeLang()" class="  my-auto end-0 my-0 text-black">{{language}}</p>
-
-</div>
-
-</div>
-
-<div [dir]="dir" class="main  d-flex align-items-center justify-content-center  p-0 ">
-
-
-  <div class=" container d-flex align-items-center justify-content-center h-100  m-0 p-0">
-    <img src="./assets/img/Hello-rafiki (3).svg" [ngClass]="hello" class="wow fadeInDown w-50 vh-100 "
-      data-wow-delay="0.3s" alt="">
-
-
-    <div dir="rtl" [ngClass]="loginArabic" style="background-color: transparent!important;"
-      class="arabic flex-wrap-reverse div-login d-flex align-items-center  bg-black justify-content-center  rounded-3 w-100 h-75 overflow-hidden container ">
-      <div class="row w-100 h-100 flex-wrap-reverse p-0 ">
-
-        <div [ngClass]="{'bg-opacity-75 bg-black': mood == 'night'}"
-          class="col-md-6 col-sm-12 row leftHalf d-flex flex-column align-items-center justify-content-center m-0 ">
-          <div class=" col-10 d-flex flex-column align-items-center justify-content-center ">
-            <div class="input-group mb-3  ">
-              <input type="text" class="form-control rounded-0 rounded-end" [(ngModel)]="emailOrPhone" placeholder="الهاتف أو البريد الإلكتروني"
-                aria-describedby="basic-addon1">
-              <span class="input-group-text bg-white rounded-0 rounded-start" id="basic-addon1"><i
-                  class="fa-solid fa-user text-black rounded-5 d-flex align-items-center justify-content-center"></i></span>
-            </div>
-            <div class="input-group   ">
-              <span class="input-group-text bg-white rounded-0 rounded-end" id="basic-addon1"><i
-                  style="cursor: pointer;" class="fa-solid fa-eye-low-vision"></i></span>
-              <input type="text" class="form-control" placeholder="كلمه السر" [(ngModel)]="password">
-              <span class="input-group-text bg-white rounded-0 rounded-start" id="basic-addon1"><i
-                  class="fa-solid fa-lock text-black  d-flex align-items-center justify-content-center"></i></span>
-            </div>
-            <div [ngClass]="{'text-white': mood == 'night'}"
-              class=" col-12  d-flex align-items-center justify-content-between row mt-md-3 mt-sm-0 ">
-              <div class="col-lg-6 col-sm-12 d-flex p-0"><input class=" my-auto me-1" type="checkbox">
-                <p class=" my-auto mb-1 opacity-75 ">تذكرني</p>
-              </div>
-              <div class=" col-lg-6 col-sm-12 p-0 ">
-                <button (click)="login()" class="w-100 btn btn-info text-white ">تسجيل الدخول
-                            <div *ngIf="loading" class="  spinner-border text-white loaded" role="status" >
-    <span class="visually-hidden"></span>
-  </div>
-                </button>
-              </div>
-            </div>
-
-            <div [ngClass]="{'text-white': mood == 'night'}" style="font-size: 15px !important;"
-              class="col-12   d-flex align-items-center justify-content-between mt-3">
-              <div class=" d-flex text-primary opacity-75 ">
-                <p routerLink="/register" style="cursor: pointer;">انشاء حساب</p>
-              </div>
-              <div class=" d-flex opacity-75">
-                <p>هل نسيت الرقم السري ؟</p>
-              </div>
-
-            </div>
-
-            <div [ngClass]="{'text-white': mood == 'night'}"
-              class=" d-flex align-items-center justify-content-center  col-12 row ">
-              <div class="col-5  ">
-                <div class=" line "></div>
-              </div>
-              <p class="col-2  my-auto  text-center p-0">أو</p>
-              <div class="col-5">
-                <div class=" line "></div>
-              </div>
-            </div>
-
-
-          </div>
-
-
-
-
-          <div class=" mt-2 col-6">
-            <div class=" d-flex my-2 w-100 col">
-
-              <button class=" btn  rounded-end rounded-0 m-0 border-0 py-2 px-0 text-white w-100 "
-                style="background-color: #3a5999;">فيس بوك</button>
-
-              <span class="input-group-text m-0 rounded-start rounded-0 border-0" style="background-color: #3a5999;"
-                id="basic-addon1"><i
-                  class="fa-brands fa-facebook text-white  d-flex align-items-center justify-content-center"></i></span>
-            </div>
-            <div class=" d-flex my-2  w-100 ">
-
-
-                  <asl-google-signin-button></asl-google-signin-button>
-
-            </div>
-          </div>
-
+    <aside class="brand-panel">
+      <div class="brand-top">
+        <div class="brand-mark">
+          <i class="fa-solid fa-paper-plane"></i>
         </div>
 
-
-
-
-
-
-
-
-
-        <div [ngClass]="{'bg-opacity-75 bg-black nightborder': mood == 'night'}"
-          class="col-md-6 col-sm-12  rightHalf d-flex align-items-center justify-content-center">
-          <img src="./assets/img/Gen Z-pana.svg" class=" w-75" alt="">
-        </div>
+        <p class="brand-name">Chatly</p>
       </div>
 
+      <div class="brand-content">
+        <h1>مرحبًا بعودتك.</h1>
 
-    </div>
+        <p>
+          ادخل إلى محادثاتك، تواصل مع أصدقائك، وتابع كل شيء من مكان واحد
+          بواجهة بسيطة وسريعة.
+        </p>
 
-
-    <div [ngClass]="loginEnglish" style="background-color: transparent!important;"
-      class="english div-login d-flex align-items-center  bg-black justify-content-center  rounded-3 w-100 h-75 overflow-hidden container ">
-      <div class="row w-100 h-100 flex-wrap-reverse p-0">
-        <div [ngClass]="{'bg-opacity-75 bg-black': mood == 'night'}"
-          class="col-md-6 col-sm-12 row leftHalf d-flex flex-column align-items-center justify-content-center m-0 ">
-
-          <div class=" col-10 d-flex flex-column align-items-center justify-content-center ">
-            <p *ngIf="emailErr" class="text-danger text-start w-100 mb-0">{{emailErr}}</p>
-
-            <div class="input-group mb-3  ">
-              <span class="input-group-text bg-white" id="basic-addon1"><i
-                  class="fa-solid fa-user text-black rounded-5 d-flex align-items-center justify-content-center"></i></span>
-              <input type="text" class="form-control" [(ngModel)]="emailOrPhone" placeholder="Phone or email"
-                aria-describedby="basic-addon1">
-            </div>
-
-            <p *ngIf="passErr" class="text-danger text-start w-100 mb-0">{{passErr}}</p>
-            <div class="input-group   ">
-              <span class="input-group-text bg-white" id="basic-addon1"><i
-                  class="fa-solid fa-lock text-black  d-flex align-items-center justify-content-center"></i></span>
-              <input type="text" class="form-control" placeholder="Password" [(ngModel)]="password"
-                aria-describedby="basic-addon1">
-              <span class="input-group-text bg-white" id="basic-addon1"><i style="cursor: pointer;"
-                  class="fa-solid fa-eye-low-vision"></i></span>
-            </div>
-            <div [ngClass]="{'text-white': mood == 'night'}"
-              class=" col-12  d-flex align-items-center justify-content-between row mt-md-3 mt-sm-0 ">
-              <div class="col-lg-6 col-sm-12 d-flex p-0"><input disabled class=" my-auto me-1" type="checkbox">
-                <p class=" my-auto mb-1 opacity-75 ">Remember me</p>
-              </div>
-              <div class=" col-lg-6 col-sm-12 p-0 ">
-                <button (click)="login()" class="w-100 btn btn-info text-white ">LOGIN
-
-                  <div *ngIf="loading" class="  spinner-border text-white loaded" role="status" >
-    <span class="visually-hidden"></span>
-  </div>
-                </button>
-              </div>
-            </div>
-            <div [ngClass]="{'text-white': mood == 'night'}" style="font-size: 15px !important;"
-              class="col-12   d-flex align-items-center justify-content-between mt-3">
-              <div  class=" d-flex text-primary opacity-75 ">
-                <p  [ngClass]="{'text-main': mood == 'night'}" routerLink="/register" style="cursor: pointer;">register</p>
-              </div>
-              <div class=" d-flex opacity-75">
-                <p>ForgetPassword?</p>
-              </div>
-            </div>
-            <div [ngClass]="{'text-white': mood == 'night'}"
-              class=" d-flex align-items-center justify-content-center  col-12 row ">
-              <div class="col-5  ">
-                <div class=" line "></div>
-              </div>
-              <p class="col-2  my-auto  text-center p-0">OR</p>
-              <div class="col-5">
-                <div class=" line "></div>
-              </div>
-            </div>
-          </div>
-          <div class=" mt-2 col-6">
-            <div class=" d-flex my-2 w-100 ">
-              <span class="input-group-text m-0 rounded-start rounded-0 border-0" style="background-color: #3a5999;"
-                id="basic-addon1"><i
-                  class="fa-brands fa-facebook text-white  d-flex align-items-center justify-content-center"></i></span>
-              <button class=" btn  rounded-end rounded-0 m-0 border-0 py-2 px-0 text-white w-100 "
-                style="background-color: #3a5999;">FACEBOOK</button>
-
-            </div>
-            <div class=" d-flex my-2  w-100 ">
-              <!-- <span class="input-group-text m-0 rounded-start rounded-0 border-0" style="background-color: #ef4437;"
-                id="basic-addon1"><i
-                  class="fa-brands fa-google text-white  d-flex align-items-center justify-content-center"></i></span>
-              <button class=" btn  rounded-end rounded-0 m-0 border-0 py-2 px-0 text-white w-100 "
-                style="background-color: #ef4437;">GOOGLE</button> -->
-                <asl-google-signin-button></asl-google-signin-button>
-
-            </div>
-          </div>
-        </div>
-        <div [ngClass]="{'bg-opacity-75 bg-black nightborder': mood == 'night'}"
-          class="col-md-6 col-sm-12  rightHalf d-flex align-items-center justify-content-center">
-          <img src="./assets/img/Gen Z-pana.svg" class=" w-75" alt="">
-        </div>
+        <img
+          class="brand-art"
+          src="./assets/img/Gen Z-pana.svg"
+          alt="تواصل ومحادثات"
+        />
       </div>
-    </div>
 
-  </div>
+      <div class="brand-footer">
+        مساحة هادئة للمحادثات المهمة.
+      </div>
+    </aside>
+
+    <main class="form-panel">
+      <div class="form-wrap">
+
+        <p class="eyebrow">تسجيل الدخول</p>
+
+        <h2>سعداء بعودتك</h2>
+
+        <p class="subtitle">
+          أدخل بياناتك للوصول إلى حسابك ومحادثاتك.
+        </p>
+
+        <!-- Demo Account -->
+        <section
+          class="demo-card"
+          aria-label="الحساب التجريبي"
+        >
+          <div class="demo-icon">
+            <i class="fa-solid fa-flask"></i>
+          </div>
+
+          <div class="demo-content">
+
+            <div class="demo-heading">
+              <div>
+                <span class="demo-badge">
+                  حساب تجريبي
+                </span>
+
+                <h3>
+                  جرّب الموقع مباشرة
+                </h3>
+              </div>
+
+              <i
+                class="fa-solid fa-circle-check demo-check"
+              ></i>
+            </div>
+
+            <p>
+              استخدم البيانات التالية لاستكشاف المحادثات والواجهة
+              بدون إنشاء حساب.
+            </p>
+
+            <div class="demo-credentials">
+
+              <div class="credential">
+                <span>البريد</span>
+
+                <strong>
+                  {{ demoAccount.emailOrPhone }}
+                </strong>
+              </div>
+
+              <div class="credential">
+                <span>كلمة المرور</span>
+
+                <strong>
+                  {{ demoAccount.password }}
+                </strong>
+              </div>
+
+            </div>
+
+            <button
+              type="button"
+              class="demo-btn"
+              (click)="useDemoAccount()"
+            >
+              <i class="fa-solid fa-bolt"></i>
+
+              استخدام الحساب التجريبي
+            </button>
+
+          </div>
+        </section>
+
+        <!-- Email -->
+        <div class="form-group">
+
+          <label class="field-label">
+            البريد الإلكتروني أو الهاتف
+          </label>
+
+          <div class="field">
+
+            <i class="field-icon fa-solid fa-user"></i>
+
+            <input
+              type="text"
+              [(ngModel)]="emailOrPhone"
+              placeholder="example@email.com"
+              autocomplete="username"
+              (keyup.enter)="login()"
+            />
+
+          </div>
+
+          <div
+            *ngIf="emailErr"
+            class="field-error"
+          >
+            {{ emailErr }}
+          </div>
+
+        </div>
+
+        <!-- Password -->
+        <div class="form-group">
+
+          <label class="field-label">
+            كلمة المرور
+          </label>
+
+          <div class="field">
+
+            <i class="field-icon fa-solid fa-lock"></i>
+
+            <input
+              [type]="showPassword ? 'text' : 'password'"
+              [(ngModel)]="password"
+              placeholder="أدخل كلمة المرور"
+              autocomplete="current-password"
+              (keyup.enter)="login()"
+            />
+
+            <button
+              type="button"
+              class="password-toggle"
+              (click)="showPassword = !showPassword"
+              [attr.aria-label]="
+                showPassword
+                  ? 'إخفاء كلمة المرور'
+                  : 'إظهار كلمة المرور'
+              "
+            >
+              <i
+                class="fa-solid"
+                [ngClass]="
+                  showPassword
+                    ? 'fa-eye-slash'
+                    : 'fa-eye'
+                "
+              ></i>
+            </button>
+
+          </div>
+
+          <div
+            *ngIf="passErr"
+            class="field-error"
+          >
+            {{ passErr }}
+          </div>
+
+        </div>
+
+        <div class="form-row">
+
+          <label class="remember">
+            <input type="checkbox" />
+            <span>تذكرني</span>
+          </label>
+
+          <span class="forgot">
+            نسيت كلمة المرور؟
+          </span>
+
+        </div>
+
+        <div
+          *ngIf="message"
+          class="server-error"
+        >
+          {{ message }}
+        </div>
+
+        <button
+          type="button"
+          class="primary-btn"
+          [disabled]="loading"
+          (click)="login()"
+        >
+          <span *ngIf="!loading">
+            تسجيل الدخول
+          </span>
+
+          <span *ngIf="loading">
+            جاري تسجيل الدخول...
+          </span>
+
+          <span
+            *ngIf="loading"
+            class="spinner"
+            aria-hidden="true"
+          ></span>
+
+          <i
+            *ngIf="!loading"
+            class="fa-solid fa-arrow-left"
+          ></i>
+        </button>
+
+        <div class="divider">
+          <span>أو</span>
+        </div>
+
+        <button
+          type="button"
+          class="social-btn"
+        >
+          <i class="fa-brands fa-facebook-f"></i>
+
+          تسجيل الدخول باستخدام Facebook
+        </button>
+
+        <p class="signup-link">
+          ليس لديك حساب؟
+
+          <a (click)="goToRegister()">
+            إنشاء حساب جديد
+          </a>
+        </p>
+
+      </div>
+    </main>
+
+  </section>
 </div>

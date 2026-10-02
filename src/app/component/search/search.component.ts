@@ -1,59 +1,41 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+
+interface SettingsMenuItem {
+  label: string;
+  route: string;
+  icon: string;
+}
 
 @Component({
   selector: 'app-search',
   templateUrl: './search.component.html',
   styleUrls: ['./search.component.scss'],
 })
-export class SearchComponent implements OnInit {
+export class SearchComponent {
+  readonly menuItems: SettingsMenuItem[] = [
+    { label: 'General', route: 'general', icon: 'fa-solid fa-gear' },
+    { label: 'Profile', route: 'profile', icon: 'fa-solid fa-user' },
+    { label: 'Friends', route: 'friends', icon: 'fa-solid fa-user-group' },
+    { label: 'Add Friends', route: 'add-friend', icon: 'fa-solid fa-user-plus' },
+    { label: 'Reminders', route: 'reminders', icon: 'fa-solid fa-list-check' },
+    { label: 'Stars', route: 'stars', icon: 'fa-solid fa-star' },
+  ];
 
+  constructor(
+    private router: Router,
+    private activatedRoute: ActivatedRoute
+  ) {}
 
-  setting = '';
-  profile = 'd-none';
-  friend = 'd-none';
-  addFriend = 'd-none';
-  plans = 'd-none';
-  stars = 'd-none';
-  constructor() {}
-
-
-
-
-  currentSection: string = 'setting'; // القسم الافتراضي
-
-
-
-  ngOnInit(): void {
-
+  navigateTo(route: string): void {
+    this.router.navigate([route], { relativeTo: this.activatedRoute });
   }
 
-  dnone(){
-    this.setting='d-none'
-    this.profile='d-none'
-    this.friend='d-none'
-    this.addFriend='d-none'
-    this.plans='d-none'
-    this.stars='d-none'
+  isActive(route: string): boolean {
+    return this.router.url === `/settings/${route}`;
   }
 
-
-
-
-
-
-
-
-
-  menuItems = [
-  { label: 'Setting', section: 'setting', icon: 'fa-solid fa-gear' },
-  { label: 'Profile', section: 'profile', icon: 'fa-solid fa-user' },
-  { label: 'Friends', section: 'friend', icon: 'fa-solid fa-user-group' },
-  { label: 'Add Friends', section: 'addFriend', icon: 'fa-solid fa-plus' },
-  { label: 'Reminder', section: 'plans', icon: 'fa-solid fa-list-check' },
-  { label: 'Stars', section: 'stars', icon: 'fa-solid fa-star' }
-];
-
-setSection(section: string) {
-  this.currentSection = section;
-}
+  backHome(): void {
+    this.router.navigate(['/home']);
+  }
 }

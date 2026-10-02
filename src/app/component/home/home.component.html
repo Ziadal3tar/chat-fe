@@ -1,231 +1,413 @@
-<!-- <p class="cursor-pointer position-absolute top-0 start-0" routerLink="/login" (click)="logout()">logout</p> -->
+<div class="messenger-shell">
+  <div class="messenger-layout">
 
-<div class="main-container d-flex justify-content-center align-items-center">
-  <div class="home-layout row col-12 vh-100 d-flex justify-content-center align-items-center">
-
-    <!-- 🔍 Search Section -->
-    <div [ngClass]="searchStyle" class="col-lg-8 col-sm-12">
+    <!-- ==================== SEARCH / SETTINGS ROUTE ==================== -->
+    <div [ngClass]="searchStyle" class="search-route-panel">
       <app-search [ngClass]="searchStyle"></app-search>
     </div>
 
-    <!-- 💬 Chat Section -->
-    <div [ngClass]="chat" class="chat-section col-lg-8 col-sm-12 d-md-flex flex-column position-relative">
+    <!-- ==================== CHAT ==================== -->
+    <section [ngClass]="chat" class="chat-panel">
 
-      <!-- Placeholder Image -->
-      <div class="w-100 h-100 placeholder-bg" [ngClass]="{ 'd-none': chatItem != 'd-none' }"
-        style="background: url('./assets/img/Chatting-rafiki.svg') center/contain no-repeat;">
+      <!-- Empty chat state -->
+      <div class="chat-empty-state" [ngClass]="{ 'is-hidden': chatItem != 'd-none' }">
+        <div class="empty-illustration">
+          <img src="./assets/img/Chatting-rafiki.svg" alt="Start chatting">
+        </div>
+        <h2>Start a conversation</h2>
+        <p>Select a friend from your conversations and start chatting.</p>
       </div>
 
-      <!-- Chat Header -->
-      <div [ngClass]="chatItem" class="chat-header d-flex justify-content-between align-items-center px-3">
-        <!-- Left -->
-        <div class="chat-controls d-flex align-items-center gap-3">
+      <div *ngIf="isLoadingChat" class="chat-loading-state" aria-live="polite">
+        <div class="loading-spinner"></div>
+        <span>Loading conversation...</span>
+      </div>
+
+      <div *ngIf="chatError" class="chat-error-state" role="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>{{ chatError }}</span>
+        <button type="button" (click)="retryOpenChat()">Try again</button>
+      </div>
+
+      <!-- Chat header -->
+      <header [ngClass]="chatItem" class="chat-header">
+        <div class="chat-header-main">
+          <div class="chat-avatar-wrapper">
+            <div class="chat-avatar"
+              [style.background]="'url(' + imgChat + ') center/cover no-repeat'">
+            </div>
+            <span *ngIf="theOpenedChatId?.isOnline" class="online-dot" aria-label="Online"></span>
+          </div>
+
+          <div class="chat-user-info">
+            <h2>{{ nameChat }}</h2>
+            <span [class.online-presence]="theOpenedChatId?.isOnline">{{ chatPresenceLabel }}</span>
+          </div>
+        </div>
+
+        <div class="chat-header-actions">
+          <button type="button" class="header-icon-btn" title="Voice call" aria-label="Voice call" (click)="startCall('audio')">
+            <i class="fa-solid fa-phone"></i>
+          </button>
+          <button type="button" class="header-icon-btn" title="Video call" aria-label="Video call" (click)="startCall('video')">
+            <i class="fa-solid fa-video"></i>
+          </button>
+
           <div ngbDropdown>
-            <i class="fa-solid fa-ellipsis-vertical fs-5 cursor-pointer" id="dropdownBasic1" ngbDropdownToggle></i>
-            <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
-              <p ngbDropdownItem>Block</p>
-              <p ngbDropdownItem>Remove Chat</p>
-              <p (click)="closeChat()" ngbDropdownItem>Close</p>
+            <button type="button" class="header-icon-btn" ngbDropdownToggle aria-label="Chat options">
+              <i class="fa-solid fa-ellipsis-vertical"></i>
+            </button>
+            <div ngbDropdownMenu class="chat-menu">
+              <button ngbDropdownItem type="button" (click)="viewProfile(theOpenedChatId)">
+                <i class="fa-regular fa-user"></i>
+                View profile
+              </button>
+              <button ngbDropdownItem type="button" (click)="closeChat()">
+                <i class="fa-solid fa-xmark"></i>
+                Close chat
+              </button>
             </div>
           </div>
-          <i class="fa-solid fa-phone fs-5"></i>
         </div>
+      </header>
 
-        <!-- Right -->
-        <div class="chat-user d-flex align-items-center gap-2">
-          <p class="chat-name m-0">{{ nameChat }}</p>
-          <div class="chat-avatar rounded-circle" [style.background]="'url(' + imgChat + ') center/cover no-repeat'">
-          </div>
-        </div>
+      <!-- Messages -->
+      <div #chatContainer [ngClass]="chatItem" class="chat-messages">
+        <app-message-bubble
+          *ngFor="let message of theChat; let i = index; trackBy: trackById"
+          [message]="message"
+          [userId]="userData?._id"
+          [index]="i"
+          (mediaSelected)="openMediaViewer($event.url, $event.type)"
+          (action)="onMessageAction($event)">
+        </app-message-bubble>
       </div>
 
-      <!-- Chat Messages -->
-      <div #chatContainer [ngClass]="chatItem" class="chat-container">
-        <ng-container *ngFor="let message of theChat; let i = index">
+      <!-- Composer -->
+      <div *ngIf="theOpenedChatId" class="chat-composer" [class.is-editing]="!!editingMessage">
+        <div *ngIf="editingMessage" class="editing-banner">
+          <i class="fa-regular fa-pen-to-square"></i>
+          <span>Editing message</span>
+          <button type="button" (click)="cancelEdit()">Cancel</button>
+        </div>
 
-          <!-- 📅 Date Divider -->
-          <div *ngIf="message.showDivider" class="date-divider text-center py-2">
-            <span class="bg-light px-3 py-1 rounded-pill small text-secondary shadow-sm">
-              {{ formatDateDivider(message?.date) }}
-            </span>
+        <div class="emoji-control">
+          <button type="button" class="composer-icon" title="Emoji" [disabled]="!!editingMessage" (click)="toggleEmojiPicker()">
+            <i class="fa-regular fa-face-smile"></i>
+          </button>
+          <div *ngIf="emojiOpen" class="emoji-picker" (click)="$event.stopPropagation()">
+            <button *ngFor="let emoji of emojiList" type="button" (click)="insertEmoji(emoji)">{{ emoji }}</button>
           </div>
+        </div>
 
-          <!-- 💌 Message -->
-          <div class="message-row d-flex px-3 py-1" [ngClass]="{
-              'justify-content-end': message?.sendBy?._id == userData._id,
-              'justify-content-start': message?.sendBy?._id != userData._id,
-              'mt-3': i == 0
-            }">
-
-            <div class="message-wrapper d-flex flex-column" style="max-width: 70%;">
-
-              <p *ngIf="message?.content" [ngClass]="{
-                  'my-message': message?.sendBy?._id == userData._id,
-                  'other-message': message?.sendBy?._id != userData._id
-                }" class="message-text p-2 rounded-4 shadow-sm mb-1">
-                {{ message?.content }}
-              </p>
-
-              <!-- 🖼️ Image -->
-              <img *ngIf="message.fileType === 'image'" [src]="message.fileUrl" class="message-image"
-                (click)="openMediaViewer(message.fileUrl, 'image')" />
-
-              <!-- 📄 PDF -->
-              <div *ngIf="message.fileType === 'pdf'" class="pdf-message d-flex align-items-center gap-2">
-                <i class="fa fa-file-pdf text-danger"></i>
-                <a [href]="message.fileUrl" download target="_blank">Download PDF</a>
-              </div>
-
-              <!-- 🎥 Video -->
-              <video *ngIf="message.fileType === 'video'" [src]="message.fileUrl" controls class="message-video"
-                (click)="openMediaViewer(message.fileUrl, 'video')"></video>
-
-              <span class="message-time small mt-1 text-light">
-                <i *ngIf="message.sendBy._id === userData._id" class="fa"
-                  [ngClass]="message.isRead ? 'fa-check-double text-primary' : 'fa-check'"></i>
-                {{ formatTime(message?.time || message?.date) }}
-              </span>
-            </div>
-          </div>
-        </ng-container>
-      </div>
-
-      <!-- 🖊️ Chat Input -->
-      <div *ngIf="theOpenedChatId"
-        class="chat-input d-flex align-items-center justify-content-between px-3 py-2 border-top bg-light">
-
-        <!-- 😊 Emoji -->
-        <button class="icon-btn"><i class="fa-solid fa-face-smile"></i></button>
-
-        <!-- 📎 Attach -->
-        <div class="position-relative">
-          <input id="fileInput" type="file" class="d-none" (change)="onFileSelected($event)" #fileInput />
-          <button class="icon-btn" (click)="fileInput.click()">
+        <div class="attachment-control" [class.disabled-control]="!!editingMessage">
+          <input id="fileInput" type="file" class="d-none"
+            (change)="onFileSelected($event)" #fileInput>
+          <button type="button" class="composer-icon" (click)="fileInput.click()" title="Attach file" [disabled]="!!editingMessage">
             <i class="fa-solid fa-paperclip"></i>
           </button>
         </div>
 
-        <!-- ✏️ Input + Preview -->
-        <div class="flex-grow-1 mx-2 position-relative">
-
-          <!-- Preview Boxes (Image, Video, PDF, Trim Section) -->
-          <ng-container *ngIf="filePreview || videoUrl">
-            <div class="preview-box text-center p-2">
+        <div class="composer-field">
+          <div *ngIf="!editingMessage && (filePreview || videoUrl)" class="attachment-preview">
+            <div class="attachment-preview-content">
               <ng-container [ngSwitch]="fileType">
-                <img *ngSwitchCase="'image'" [src]="filePreview" class="w-100 rounded mb-2" />
-                <video *ngSwitchCase="'video'" [src]="videoPreview || videoUrl" controls
-                  class="rounded w-100 mb-2"></video>
-                <p *ngSwitchCase="'pdf'" class="fw-bold text-dark">📄 {{ fileName }}</p>
+                <img *ngSwitchCase="'image'" [src]="filePreview" alt="Preview">
+                <video *ngSwitchCase="'video'" [src]="videoPreview || videoUrl" controls></video>
+                <div *ngSwitchCase="'audio'" class="audio-preview">
+                  <i class="fa-solid fa-microphone"></i>
+                  <div>
+                    <strong>Voice message</strong>
+                    <audio [src]="filePreview" controls></audio>
+                  </div>
+                </div>
+                <div *ngSwitchCase="'pdf'" class="pdf-preview">
+                  <i class="fa-solid fa-file-pdf"></i>
+                  <span>{{ fileName }}</span>
+                </div>
               </ng-container>
-              <div class="d-flex justify-content-center gap-2 mt-2">
-                <button class="btn btn-success btn-sm" (click)="sendMessage()">إرسال</button>
-                <button class="btn btn-danger btn-sm" (click)="cancelPreview()">إلغاء</button>
-              </div>
             </div>
-          </ng-container>
+            <div class="attachment-preview-actions">
+              <button type="button" class="preview-send" (click)="sendMessage()">Send</button>
+              <button type="button" class="preview-cancel" (click)="cancelPreview()">Cancel</button>
+            </div>
+          </div>
 
-          <!-- Input Field -->
-          <div class="input-group">
-            <input type="text" [(ngModel)]="message" placeholder="اكتب رسالتك..."
-              class="form-control rounded-pill rounded-end-0 shadow-sm" />
-            <button [disabled]="!message.trim() && !selectedFile" class="btn send-btn" (click)="sendMessage()">
-              <i class="fa-solid fa-paper-plane"></i>
+          <div *ngIf="fileError" class="composer-error file-error" role="alert">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ fileError }}</span>
+            <button type="button" (click)="fileError = ''" aria-label="Dismiss">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div *ngIf="recordingError" class="composer-error file-error">
+            <i class="fa-solid fa-microphone-slash"></i>
+            <span>{{ recordingError }}</span>
+          </div>
+
+          <input type="text"
+            [(ngModel)]="message"
+            (keyup.enter)="sendMessage()"
+            placeholder="Write a message..."
+            autocomplete="off">
+        </div>
+
+        <span *ngIf="actionError" class="composer-error" role="alert">{{ actionError }}</span>
+
+        <button type="button" class="composer-icon record-button"
+          [class.is-recording]="isRecording"
+          [disabled]="!!editingMessage"
+          (click)="toggleRecording()"
+          [title]="isRecording ? 'Stop recording' : 'Record voice message'">
+          <i class="fa-solid" [ngClass]="isRecording ? 'fa-stop' : 'fa-microphone'"></i>
+          <span *ngIf="isRecording" class="recording-time">{{ formatRecordingTime() }}</span>
+        </button>
+
+        <button type="button"
+          class="send-message-btn"
+          [disabled]="isSendingMessage || (!message.trim() && !selectedFile)"
+          (click)="sendMessage()"
+          title="Send message">
+          <i *ngIf="!isSendingMessage" class="fa-solid" [ngClass]="editingMessage ? 'fa-check' : 'fa-paper-plane'"></i>
+          <span *ngIf="isSendingMessage" class="button-spinner"></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ==================== CONVERSATIONS / USERS ==================== -->
+    <aside [ngClass]="friend" class="conversations-panel">
+      <div class="conversations-card">
+
+        <!-- User header -->
+        <header class="profile-header">
+          <div class="profile-header-actions">
+            <app-notification-center
+              (notificationSelected)="handleNotificationSelected($event)">
+            </app-notification-center>
+
+            <button type="button" class="settings-btn" (click)="openSettings()" title="Settings">
+              <i class="fa-solid fa-gear"></i>
+            </button>
+          </div>
+
+          <div class="current-user">
+            <div class="current-user-info">
+              <strong>{{ userData?.userName }}</strong>
+              <span>Available to chat</span>
+            </div>
+            <div class="current-avatar"
+              [style.background]="'url(' + userData?.profileImage + ') center/cover no-repeat'">
+              <span></span>
+            </div>
+          </div>
+        </header>
+
+        <!-- Stories -->
+        <section class="stories-strip" aria-label="Stories">
+          <div class="stories-strip-head">
+            <div>
+              <span class="section-kicker">MOMENTS</span>
+              <!-- <h3>Stories</h3> -->
+            </div>
+            <button type="button" class="stories-add-btn" (click)="openStoryComposer()" title="Add story">
+              <i class="fa-solid fa-plus"></i>
+            </button>
+          </div>
+
+          <div class="stories-list">
+            <button type="button" class="story-avatar own-story" (click)="openStoryComposer()">
+              <span class="story-avatar-image" [style.background-image]="'url(' + userData?.profileImage + ')'">
+                <span class="story-plus"><i class="fa-solid fa-plus"></i></span>
+              </span>
+              <span>Your story</span>
+            </button>
+
+            <button *ngFor="let group of stories; let storyIndex = index; trackBy: trackByStoryGroup" type="button" class="story-avatar" (click)="openStoryGroup(storyIndex)">
+              <span class="story-ring" [class.viewed]="!group.hasUnviewed">
+                <span class="story-avatar-image" [style.background-image]="'url(' + group.user?.profileImage + ')'">
+                </span>
+              </span>
+              <span>{{ group.user?.userName || 'Friend' }}</span>
+            </button>
+
+            <div *ngIf="!stories.length" class="stories-empty">Share a moment with your friends.</div>
+          </div>
+        </section>
+
+        <!-- Search -->
+        <div class="conversation-search">
+          <div class="search-input-wrapper">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text"
+              placeholder="Search conversations or friends"
+              [(ngModel)]="searchTerm"
+              (input)="searchFriends()">
+            <button *ngIf="searchTerm" type="button" class="clear-search"
+              (click)="searchTerm=''; searchFriends()" aria-label="Clear search">
+              <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
         </div>
 
-        <!-- 🎙️ Mic -->
-        <button class="icon-btn"><i class="fa-solid fa-microphone"></i></button>
-      </div>
-    </div>
-
-
-
-    <!-- 👥 Friends Section -->
-    <div [ngClass]="friend" class="friends-section col-lg-4 p-md-4 p-sm-0 h-100 position-relative z-2">
-      <div class="friends-list h-100 d-flex flex-column rounded-top bg-light text-dark">
-
-        <!-- Header -->
-        <div class="d-flex align-items-center justify-content-between p-3 border-bottom bg-light" style="height: 8%;">
-          <i class="fa-solid fa-bars fs-4 cursor-pointer" (click)="toggleSettings()"></i>
-          <div class="d-flex align-items-center">
-            <p class="my-auto me-2">{{ userData?.userName }}</p>
-            <div class="user-img" [style.background]="'url(' + userData?.profileImage + ') center/cover no-repeat'">
-            </div>
+        <!-- List header -->
+        <div class="list-heading">
+          <div>
+            <span class="section-kicker">MESSAGES</span>
+            <h3>{{ searchTerm ? 'Search results' : 'Your conversations' }}</h3>
           </div>
+          <span *ngIf="activeList.length" class="conversation-count">{{ activeList.length }}</span>
         </div>
 
-        <!-- Search -->
-        <div class="friend-search d-flex align-items-center p-2 p-md-3 border-top">
-          <div class="search-box d-flex align-items-center flex-grow-1 rounded-pill shadow-sm px-3 py-2">
-            <i class="fa-solid fa-magnifying-glass me-2 text-muted"></i>
-            <input type="text" class="search-input flex-grow-1 border-0 bg-transparent"
-              placeholder="Search by username..." [(ngModel)]="searchTerm" (input)="searchFriends()" />
-          </div>
-        </div>
-
-
-        <!-- Friend List -->
-        <div class="friend-scroll flex-grow-1 overflow-auto px-2 py-2">
+        <!-- Conversation list -->
+        <div class="conversation-list">
           <ng-container *ngIf="activeList.length > 0; else noResults">
-            <div *ngFor="let item of activeList; let i = index"
-              class="friend-item d-flex align-items-center gap-3 p-2 rounded-3 cursorPointer"
-              (click)="openChat(i, activeList)">
-
-              <!-- صورة المستخدم -->
-              <div class="friend-avatar rounded-circle overflow-hidden border"
-                [style.background-image]="'url(' + getProfileImage(item) + ')'">
-              </div>
-
-              <!-- معلومات المستخدم -->
-              <div class="userDetails flex-grow-1 d-flex flex-column justify-content-center">
-                <div class="d-flex align-items-center justify-content-between">
-                  <p class="m-0 fw-semibold text-truncate userName">{{ getUserName(item) }}</p>
-
-                </div>
-                <div class="text-muted-container">
-                  <p *ngIf="isChat(item)" [ngClass]="{'d-none': item?.lastMessage?.fileType == 'image'}"
-                    class="text-muted small text-truncate m-0 flex-grow-1">
-                    {{ item?.lastMessage?.content }}
-                  </p>
-                  <p class="text-muted small text-truncate m-0 flex-grow-1"
-                    *ngIf="item?.lastMessage?.fileType == 'image'">image <i class="fa-solid fa-image"></i></p>
-                  <span *ngIf="item?.unreadCount > 0" class="badge bg-primary ms-2">
-                    {{ item?.unreadCount }}
-                  </span>
-                </div>
-                <div class="d-flex justify-content-end">
-                  <span *ngIf="isChat(item)" class="text-muted small">
-                    {{ item?.lastMessage?.date | messageTime: item?.lastMessage?.time }}
-                  </span>
-                </div>
-              </div>
-
-              <!-- أيقونة الخيارات -->
-              <i class="fa-solid fa-ellipsis-vertical text-secondary opacity-75 fs-6 ms-2"></i>
-            </div>
+            <app-conversation-item
+              *ngFor="let item of activeList; let i = index; trackBy: trackById"
+              [item]="item"
+              [index]="i"
+              (selected)="openChat($event, activeList)"
+              (profileSelected)="viewProfile($event)">
+            </app-conversation-item>
           </ng-container>
 
-          <!-- لا توجد نتائج -->
           <ng-template #noResults>
-            <div class="text-center text-muted py-4">
-              {{
-              searchTerm.trim().length > 0
-              ? 'لا يوجد أصدقاء مطابقين'
-              : 'لا يوجد محادثات'
-              }}
+            <div class="empty-conversations">
+              <div class="empty-icon"><i class="fa-regular fa-comments"></i></div>
+              <h4>{{ searchTerm ? 'No people found' : 'No conversations yet' }}</h4>
+              <p>{{ searchTerm ? 'Try another username.' : 'Search for a friend to start your first conversation.' }}</p>
             </div>
           </ng-template>
         </div>
-
-
       </div>
-    </div>
+    </aside>
   </div>
 </div>
 
-<!-- 🖼️ Media Viewer -->
-<div *ngIf="mediaViewer.open" class="media-viewer" (click)="closeMediaViewer()">
-  <img *ngIf="mediaViewer.type === 'image'" [src]="mediaViewer.url" />
-  <video *ngIf="mediaViewer.type === 'video'" [src]="mediaViewer.url" controls autoplay></video>
+
+<!-- Story composer -->
+<div *ngIf="storyComposerOpen" class="feature-overlay" (click)="closeStoryComposer()">
+  <section class="story-composer-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    <button type="button" class="feature-close" (click)="closeStoryComposer()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    <div class="feature-heading">
+      <span class="feature-icon"><i class="fa-solid fa-camera-retro"></i></span>
+      <div><span class="section-kicker">NEW STORY</span><h3>Share a moment</h3><p>Stories disappear automatically after 24 hours.</p></div>
+    </div>
+
+    <label class="story-upload-zone" *ngIf="!storyPreviewUrl">
+      <i class="fa-regular fa-images"></i>
+      <strong>Choose image or video</strong>
+      <span>Up to 15 MB</span>
+      <input #storyFileInput type="file" accept="image/*,video/*" (change)="onStoryFileSelected($event)">
+    </label>
+
+    <div *ngIf="storyPreviewUrl" class="story-preview-large">
+      <img *ngIf="storyFile?.type?.startsWith('image/')" [src]="storyPreviewUrl" alt="Story preview">
+      <video *ngIf="storyFile?.type?.startsWith('video/')" [src]="storyPreviewUrl" controls></video>
+      <button type="button" class="story-change-btn" (click)="resetStorySelection()">Change</button>
+    </div>
+
+    <textarea [(ngModel)]="storyCaption" maxlength="500" rows="3" placeholder="Add a caption..."></textarea>
+    <div *ngIf="storyError" class="feature-error">{{ storyError }}</div>
+    <div class="feature-actions">
+      <button type="button" class="secondary-feature-btn" (click)="closeStoryComposer()">Cancel</button>
+      <button type="button" class="primary-feature-btn" [disabled]="!storyFile || storySaving" (click)="publishStory()">
+        <i class="fa-solid" [ngClass]="storySaving ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i>
+        {{ storySaving ? 'Publishing...' : 'Publish story' }}
+      </button>
+    </div>
+  </section>
 </div>
+
+<!-- Story viewer -->
+<div *ngIf="storyViewerOpen && currentStory" class="story-viewer-overlay" (click)="closeStoryViewer()">
+  <section class="story-viewer" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    <div class="story-viewer-top">
+      <div class="story-viewer-user">
+        <div class="story-viewer-avatar" [style.background-image]="'url(' + currentStoryGroup?.user?.profileImage + ')'" ></div>
+        <div><strong>{{ currentStoryGroup?.user?.userName }}</strong><span>{{ currentStory?.createdAt | date:'short' }}</span></div>
+      </div>
+      <div class="story-viewer-actions">
+        <button *ngIf="currentStoryGroup?.user?._id === userData?._id" type="button" (click)="deleteOwnStory(currentStory._id)"><i class="fa-regular fa-trash-can"></i></button>
+        <button type="button" (click)="closeStoryViewer()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+
+    <div class="story-media-area">
+      <button type="button" class="story-nav story-prev" (click)="previousStory()"><i class="fa-solid fa-chevron-left"></i></button>
+      <img *ngIf="currentStory.mediaType === 'image'" [src]="currentStory.mediaUrl" alt="Story">
+      <video *ngIf="currentStory.mediaType === 'video'" [src]="currentStory.mediaUrl" autoplay controls playsinline></video>
+      <button type="button" class="story-nav story-next" (click)="nextStory()"><i class="fa-solid fa-chevron-right"></i></button>
+    </div>
+    <div *ngIf="currentStory.caption" class="story-caption">{{ currentStory.caption }}</div>
+  </section>
+</div>
+
+<!-- Call panel -->
+<div *ngIf="callOpen" class="call-overlay">
+  <section class="call-modal" [class.video-mode]="callMode === 'video'">
+    <div class="call-modal-head">
+      <div>
+        <span class="section-kicker">{{ callMode === 'video' ? 'VIDEO CALL' : 'VOICE CALL' }}</span>
+        <h3>{{ incomingCall?.fromUserName || theOpenedChatId?.userName || nameChat }}</h3>
+        <p>{{ callState === 'incoming' ? 'Incoming call' : (callState === 'connected' ? 'Connected' : 'Calling...') }}</p>
+      </div>
+      <button type="button" class="feature-close" *ngIf="callState !== 'incoming'" (click)="endCall()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div class="call-stage">
+      <div *ngIf="callMode === 'video'" class="remote-video-frame">
+        <video #remoteVideo autoplay playsinline></video>
+        <div *ngIf="callState !== 'connected'" class="call-placeholder"><i class="fa-solid fa-user"></i></div>
+      </div>
+      <audio *ngIf="callMode === 'audio'" #remoteAudio autoplay></audio>
+      <div *ngIf="callMode === 'audio'" class="audio-call-avatar">
+        <div class="audio-call-avatar-image" [style.background-image]="'url(' + (incomingCall?.fromProfileImage || theOpenedChatId?.profileImage) + ')'" ></div>
+        <span>{{ callState === 'connected' ? 'Call connected' : (callState === 'incoming' ? 'Incoming call' : 'Calling...') }}</span>
+      </div>
+      <video *ngIf="callMode === 'video'" #localVideo autoplay muted playsinline class="local-video"></video>
+    </div>
+
+    <div *ngIf="callError" class="feature-error">{{ callError }}</div>
+    <div *ngIf="callState === 'incoming'" class="incoming-call-actions">
+      <button type="button" class="call-decline" (click)="rejectIncomingCall()"><i class="fa-solid fa-phone-slash"></i></button>
+      <button type="button" class="call-accept" (click)="acceptIncomingCall()"><i class="fa-solid fa-phone"></i></button>
+    </div>
+    <div *ngIf="callState !== 'incoming'" class="call-controls">
+      <button type="button" class="call-end" (click)="endCall()"><i class="fa-solid fa-phone-slash"></i> End call</button>
+    </div>
+  </section>
+</div>
+
+<!-- Media Viewer -->
+<div *ngIf="mediaViewer.open" class="media-viewer" (click)="closeMediaViewer()">
+  <button type="button" class="media-viewer-close" (click)="$event.stopPropagation(); closeMediaViewer()">
+    <i class="fa-solid fa-xmark"></i>
+  </button>
+  <img *ngIf="mediaViewer.type === 'image'" [src]="mediaViewer.url" alt="Preview" (click)="$event.stopPropagation()">
+  <video *ngIf="mediaViewer.type === 'video'" [src]="mediaViewer.url" controls autoplay (click)="$event.stopPropagation()"></video>
+</div>
+
+
+<!-- Confirmation -->
+<div *ngIf="confirmation.open" class="confirm-overlay" (click)="closeConfirmation()">
+  <section class="confirm-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    <div class="confirm-icon"><i class="fa-solid fa-shield-halved"></i></div>
+    <h3>{{ confirmation.title }}</h3>
+    <p>{{ confirmation.text }}</p>
+    <div class="confirm-actions">
+      <button type="button" class="confirm-cancel" (click)="closeConfirmation()">Cancel</button>
+      <button type="button" class="confirm-danger" [class.confirm-primary]="confirmation.action === 'save-edit'" (click)="confirmMessageAction()">
+        {{ confirmation.action === 'delete' ? 'Delete' : 'Save changes' }}
+      </button>
+    </div>
+  </section>
+</div>
+
+<app-user-profile
+  [user]="profileUser"
+  [currentUserId]="userData?._id"
+  [open]="profileOpen"
+  (closed)="closeProfile()"
+  (message)="startChatFromProfile($event)">
+</app-user-profile>

@@ -1,78 +1,417 @@
-<div class="settings-container w-100 h-100 d-flex flex-column p-3">
-  <!-- Header -->
-  <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-3">
-    <h4 class="m-0 fw-bold text-primary">Settings</h4>
-    <button class="btn btn-outline-secondary rounded-circle" (click)="backHome()">
+
+<div class="settings-page">
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <header class="settings-header">
+    <div class="title-wrap">
+      <div class="title-eyebrow">
+        <span class="eyebrow-dot"></span>
+        Account center
+      </div>
+
+      <h1>Settings</h1>
+      <p>Refine your account, privacy and connections from one place.</p>
+    </div>
+
+    <button
+      type="button"
+      class="icon-button"
+      (click)="goHome()"
+      aria-label="Back to home"
+      title="Back to home"
+    >
       <i class="fa-solid fa-house"></i>
     </button>
+  </header>
+
+  <div *ngIf="successMessage" class="feedback success">
+    <span class="feedback-icon">
+      <i class="fa-solid fa-circle-check"></i>
+    </span>
+    <span>{{ successMessage }}</span>
   </div>
 
-  <!-- General Section -->
-  <section class="settings-section mb-4">
-    <h6 class="text-muted fw-bold mb-3">General</h6>
-    <div class="row g-3">
-      <div class="col-lg-4 col-md-6 col-sm-12">
-        <label class="form-label fw-semibold">Mood</label>
-        <select class="form-select">
-          <option>Dark</option>
-          <option>Light</option>
-        </select>
+  <div *ngIf="errorMessage" class="feedback error">
+    <span class="feedback-icon">
+      <i class="fa-solid fa-circle-exclamation"></i>
+    </span>
+    <span>{{ errorMessage }}</span>
+  </div>
+
+  <section class="account-card">
+    <div class="account-glow"></div>
+
+    <div
+      class="account-avatar"
+      [style.backgroundImage]="'url(' + (userData?.profileImage || '') + ')'"
+    >
+      <span class="online-dot"></span>
+    </div>
+
+    <div class="account-copy">
+      <div class="account-meta">
+        <span class="label">Signed in as</span>
+        <span class="account-status">
+          <i class="fa-solid fa-circle"></i>
+          Active now
+        </span>
       </div>
-      <div class="col-lg-4 col-md-6 col-sm-12">
-        <label class="form-label fw-semibold">Language</label>
-        <select class="form-select">
-          <option>English</option>
-          <option>Arabic</option>
-        </select>
+
+      <h2>{{ userData?.userName || 'Your account' }}</h2>
+      <p>{{ userData?.email || 'Account information' }}</p>
+    </div>
+
+    <div class="account-actions">
+      <span class="account-chip">
+        <i class="fa-solid fa-shield-heart"></i>
+        Personal account
+      </span>
+
+      <button type="button" class="secondary-button" (click)="goTo('profile')">
+        <i class="fa-solid fa-pen"></i>
+        Edit profile
+      </button>
+    </div>
+  </section>
+
+  <section class="quick-strip">
+    <div class="quick-stat">
+      <span class="quick-icon blue">
+        <i class="fa-solid fa-user-group"></i>
+      </span>
+
+      <div>
+        <strong>{{ userData?.friends?.length || 0 }}</strong>
+        <span>Connections</span>
+      </div>
+    </div>
+
+    <div class="quick-stat">
+      <span class="quick-icon purple">
+        <i class="fa-solid fa-ban"></i>
+      </span>
+
+      <div>
+        <strong>{{ blockedUsers.length }}</strong>
+        <span>Blocked</span>
+      </div>
+    </div>
+
+    <div class="quick-stat">
+      <span class="quick-icon green">
+        <i class="fa-solid fa-user-check"></i>
+      </span>
+
+      <div>
+        <strong>Active</strong>
+        <span>Account status</span>
       </div>
     </div>
   </section>
 
-  <!-- Account Section -->
-  <section class="settings-section mb-4">
-    <h6 class="text-muted fw-bold mb-3">Account</h6>
-    <div class="col-12 mx-auto">
-      <label class="form-label fw-semibold">Blocked Users</label>
-      <!-- <button class="btn btn-secondary w-100 bg-opacity-75">2 Blocked Users</button> -->
+  <div class="settings-grid">
 
-      <button class="btn btn-secondary w-100 bg-opacity-75" (click)="toggleBlockedUsers()">
-  {{ blockedUsers.length }} Blocked Users
-</button>
-<div *ngIf="showBlockedUsers" class="blocked-users-list mt-3">
-  <ul class="list-group">
-    <li *ngFor="let user of blockedUsers" class="list-group-item d-flex justify-content-between align-items-center">
-      <div class="d-flex align-items-center gap-2">
-        <img [src]="user.profileImage" alt="{{user.name}}" class="rounded-circle" width="40" height="40">
-        <span>{{ user.userName }}</span>
+    <section class="settings-card">
+      <div class="card-topline">
+        <div class="heading-icon">
+          <i class="fa-solid fa-user"></i>
+        </div>
+
+        <span class="section-label">01</span>
       </div>
-      <button class="btn btn-sm btn-outline-danger" (click)="unblockUser(user._id)">Unblock</button>
-    </li>
-  </ul>
+
+      <div class="card-heading">
+        <div>
+          <h2>Account</h2>
+          <p>Manage your profile and social connections.</p>
+        </div>
+      </div>
+
+      <div class="settings-list">
+
+        <button class="setting-row" type="button" (click)="goTo('profile')">
+          <span class="row-icon">
+            <i class="fa-regular fa-id-card"></i>
+          </span>
+
+          <span class="row-copy">
+            <b>Profile</b>
+            <small>Edit your name and profile image</small>
+          </span>
+
+          <span class="row-arrow">
+            <i class="fa-solid fa-arrow-up-right"></i>
+          </span>
+        </button>
+
+        <button class="setting-row" type="button" (click)="goTo('friends')">
+          <span class="row-icon">
+            <i class="fa-solid fa-user-group"></i>
+          </span>
+
+          <span class="row-copy">
+            <b>Friends</b>
+            <small>{{ userData?.friends?.length || 0 }} active connections</small>
+          </span>
+
+          <span class="row-arrow">
+            <i class="fa-solid fa-arrow-up-right"></i>
+          </span>
+        </button>
+
+        <button class="setting-row" type="button" (click)="goTo('add-friend')">
+          <span class="row-icon accent">
+            <i class="fa-solid fa-user-plus"></i>
+          </span>
+
+          <span class="row-copy">
+            <b>Find people</b>
+            <small>Search and send new friend requests</small>
+          </span>
+
+          <span class="row-arrow accent-arrow">
+            <i class="fa-solid fa-arrow-up-right"></i>
+          </span>
+        </button>
+
+      </div>
+    </section>
+
+    <section class="settings-card">
+
+      <div class="card-topline">
+        <div class="heading-icon purple">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+
+        <span class="section-label">02</span>
+      </div>
+
+      <div class="card-heading">
+        <div>
+          <h2>Privacy</h2>
+          <p>Control the people you interact with.</p>
+        </div>
+      </div>
+
+      <button
+        class="setting-row privacy-toggle"
+        type="button"
+        (click)="toggleBlockedUsers()"
+      >
+        <span class="row-icon purple-icon">
+          <i class="fa-solid fa-ban"></i>
+        </span>
+
+        <span class="row-copy">
+          <b>Blocked users</b>
+          <small>{{ blockedUsers.length }} blocked accounts</small>
+        </span>
+
+        <span class="row-arrow">
+          <i
+            class="fa-solid"
+            [ngClass]="
+              showBlockedUsers
+                ? 'fa-chevron-up'
+                : 'fa-chevron-down'
+            "
+          ></i>
+        </span>
+      </button>
+
+      <div class="blocked-panel" *ngIf="showBlockedUsers">
+
+        <div
+          *ngIf="blockedUsers.length === 0"
+          class="mini-empty"
+        >
+          <span class="mini-empty-icon">
+            <i class="fa-solid fa-user-shield"></i>
+          </span>
+
+          <span>You have no blocked users.</span>
+        </div>
+
+        <div
+          class="blocked-user"
+          *ngFor="let user of blockedUsers"
+        >
+          <div
+            class="mini-avatar"
+            [style.backgroundImage]="
+              'url(' + (user.profileImage || '') + ')'
+            "
+          ></div>
+
+          <div class="blocked-copy">
+            <b>{{ user.userName }}</b>
+            <span>Blocked account</span>
+          </div>
+
+          <button
+            type="button"
+            class="unblock-button"
+            [disabled]="actionLoadingId === user._id"
+            (click)="requestUnblock(user)"
+          >
+            {{
+              actionLoadingId === user._id
+                ? '...'
+                : 'Unblock'
+            }}
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="settings-card full-width preferences-card">
+
+      <div class="preferences-header">
+        <div>
+          <div class="card-topline compact">
+            <div class="heading-icon amber">
+              <i class="fa-solid fa-sliders"></i>
+            </div>
+
+            <span class="section-label">03</span>
+          </div>
+
+          <h2>Preferences</h2>
+          <p>
+            Visual and privacy controls prepared for future settings APIs.
+          </p>
+        </div>
+
+        <span class="future-badge">
+          <span></span>
+          Ready
+        </span>
+      </div>
+
+      <div class="preference-grid">
+
+        <div class="preference-item">
+          <span class="preference-icon">
+            <i class="fa-solid fa-sun"></i>
+          </span>
+
+          <span class="preference-copy">
+            <b>Appearance</b>
+            <small>Light / Dark theme</small>
+          </span>
+
+          <span class="coming-soon">UI ready</span>
+        </div>
+
+        <div class="preference-item">
+          <span class="preference-icon purple-tone">
+            <i class="fa-solid fa-language"></i>
+          </span>
+
+          <span class="preference-copy">
+            <b>Language</b>
+            <small>English / Arabic</small>
+          </span>
+
+          <span class="coming-soon">UI ready</span>
+        </div>
+
+        <div class="preference-item">
+          <span class="preference-icon green-tone">
+            <i class="fa-solid fa-eye"></i>
+          </span>
+
+          <span class="preference-copy">
+            <b>Last seen</b>
+            <small>Privacy visibility</small>
+          </span>
+
+          <span class="coming-soon">UI ready</span>
+        </div>
+
+        <div class="preference-item">
+          <span class="preference-icon rose-tone">
+            <i class="fa-solid fa-image"></i>
+          </span>
+
+          <span class="preference-copy">
+            <b>Profile picture</b>
+            <small>Who can see it</small>
+          </span>
+
+          <span class="coming-soon">UI ready</span>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <section class="danger-zone">
+
+    <div class="danger-copy-wrap">
+      <span class="danger-icon">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </span>
+
+      <div>
+        <span class="danger-label">Session</span>
+        <b>Sign out</b>
+        <p>End this session on the current device.</p>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="danger-button"
+      (click)="requestLogout()"
+    >
+      Log out
+      <i class="fa-solid fa-arrow-right-from-bracket"></i>
+    </button>
+
+  </section>
 </div>
 
+<div
+  class="modal-backdrop"
+  *ngIf="confirmVisible"
+  (click)="closeConfirmation()"
+>
+  <div
+    class="confirm-modal"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="confirm-icon">
+      <i class="fa-solid fa-circle-question"></i>
     </div>
-  </section>
 
-  <!-- Privacy Section -->
-  <section class="settings-section mb-4">
-    <h6 class="text-muted fw-bold mb-3">Privacy</h6>
-    <div class="row g-3">
-      <div class="col-lg-3 col-md-6 col-sm-12" *ngFor="let item of ['Last Seen', 'Picture', 'Status', 'Story']">
-        <label class="form-label fw-semibold">{{ item }}</label>
-        <select class="form-select">
-          <option>All</option>
-          <option>Friends</option>
-          <option>Customize</option>
-          <option>Exclusion</option>
-          <option>None</option>
-        </select>
-      </div>
+    <span class="modal-eyebrow">Confirmation</span>
+
+    <h3>{{ confirmTitle }}</h3>
+
+    <p>{{ confirmMessage }}</p>
+
+    <div class="modal-actions">
+      <button
+        class="secondary-button"
+        type="button"
+        (click)="closeConfirmation()"
+      >
+        Cancel
+      </button>
+
+      <button
+        class="primary-button"
+        type="button"
+        (click)="confirm()"
+      >
+        Confirm
+      </button>
     </div>
-  </section>
-
-  <!-- Actions -->
-  <div class="settings-actions d-flex flex-wrap justify-content-center gap-3 mt-auto">
-    <button class="btn btn-primary px-5">Save</button>
-    <button class="btn btn-outline-danger px-4" (click)="logout()">Logout</button>
   </div>
 </div>
+

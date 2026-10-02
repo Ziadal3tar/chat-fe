@@ -1,0 +1,52 @@
+<div *ngIf="open" class="profile-overlay" (click)="close()">
+  <section class="profile-modal" role="dialog" aria-modal="true" [attr.aria-label]="userName + ' profile'" (click)="$event.stopPropagation()">
+    <button type="button" class="profile-close" (click)="close()" aria-label="Close profile">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    <div class="profile-cover">
+      <span class="profile-cover-label">PROFILE</span>
+    </div>
+
+    <div class="profile-main">
+      <div class="profile-avatar-wrap">
+        <img [src]="profileImage" [alt]="userName + ' avatar'" class="profile-avatar">
+        <span class="profile-online-dot" [class.offline]="!isOnline"></span>
+      </div>
+
+      <div class="profile-status" [class.offline-status]="!isOnline">
+        <span></span>{{ isOnline ? 'Online now' : 'Offline' }}
+      </div>
+
+      <h2>{{ userName }}</h2>
+      <p class="profile-handle">@{{ user?.userName || 'user' }}</p>
+
+      <p class="profile-bio" [class.muted]="!user?.bio">
+        {{ user?.bio || 'No bio available' }}
+      </p>
+
+      <div class="profile-stats">
+        <div><strong>{{ friendsCount }}</strong><span>Friends</span></div>
+        <div><strong>{{ mutualFriendsCount }}</strong><span>Mutual friends</span></div>
+      </div>
+
+      <div class="profile-info-grid">
+        <div class="profile-info-item" *ngIf="user?.email">
+          <span><i class="fa-regular fa-envelope"></i> Email</span>
+          <strong>{{ user.email }}</strong>
+        </div>
+        <div class="profile-info-item" *ngIf="user?.createdAt">
+          <span><i class="fa-regular fa-calendar"></i> Member since</span>
+          <strong>{{ user.createdAt | date:'MMM yyyy' }}</strong>
+        </div>
+      </div>
+
+      <div class="profile-actions">
+        <button *ngIf="!isCurrentUser" type="button" class="profile-primary-btn" (click)="startMessage()">
+          <i class="fa-regular fa-message"></i> Message
+        </button>
+        <button type="button" class="profile-secondary-btn" (click)="close()">Close</button>
+      </div>
+    </div>
+  </section>
+</div>

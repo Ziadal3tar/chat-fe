@@ -1,0 +1,77 @@
+<div *ngIf="message?.showDivider" class="date-divider">
+  <span>{{ formatDateDivider(message?.date) }}</span>
+</div>
+
+<div class="message-row" [ngClass]="{ 'message-row-own': isOwn, 'message-row-other': !isOwn, 'message-first': index === 0 }">
+  <div class="message-wrapper" [class.message-wrapper-deleted]="isDeleted">
+    <div class="message-actions" *ngIf="!isDeleted">
+      <button type="button" class="message-menu-trigger" (click)="openMenu($event)" aria-label="Message options">
+        <i class="fa-solid fa-ellipsis-vertical"></i>
+      </button>
+
+      <div class="message-context-menu" *ngIf="menuOpen" (click)="$event.stopPropagation()">
+        <button *ngIf="isOwn && canEdit" type="button" (click)="chooseAction('edit')">
+          <i class="fa-regular fa-pen-to-square"></i>
+          Edit
+        </button>
+
+        <button *ngIf="isOwn && canDelete" type="button" class="danger" (click)="chooseAction('delete')">
+          <i class="fa-regular fa-trash-can"></i>
+          Delete
+        </button>
+
+        <button *ngIf="!isDeleted" type="button" (click)="chooseAction(isStarred ? 'unstar' : 'star')">
+          <i class="fa-solid" [ngClass]="isStarred ? 'fa-star' : 'fa-star-half-stroke'"></i>
+          {{ isStarred ? 'Unstar' : 'Star message' }}
+        </button>
+
+        <span *ngIf="isOwn && !canEdit && !canDelete && !isDeleted" class="message-window-note">
+          Editing &amp; deletion are available for 30 minutes.
+        </span>
+      </div>
+    </div>
+
+    <div class="message-content-shell">
+      <p *ngIf="!isDeleted && message?.content"
+         [ngClass]="{ 'message-own': isOwn, 'message-other': !isOwn }"
+         class="message-bubble">
+        {{ message?.content }}
+        <span *ngIf="message?.isEdited" class="edited-label">edited</span>
+      </p>
+
+      <p *ngIf="isDeleted" class="message-bubble deleted-message">
+        <i class="fa-regular fa-trash-can"></i>
+        This message was deleted
+      </p>
+
+      <button *ngIf="!isDeleted && message?.fileType === 'image'" type="button" class="message-media-btn" (click)="openMedia('image')">
+        <img [src]="message.fileUrl" class="message-image" alt="Shared image">
+      </button>
+
+      <div *ngIf="!isDeleted && message?.fileType === 'pdf'" class="pdf-message">
+        <div class="pdf-icon"><i class="fa-solid fa-file-pdf"></i></div>
+        <div class="pdf-info">
+          <strong>PDF document</strong>
+          <a [href]="message.fileUrl" download target="_blank">Download file</a>
+        </div>
+      </div>
+
+      <button *ngIf="!isDeleted && message?.fileType === 'video'" type="button" class="message-media-btn video-message-btn" (click)="openMedia('video')">
+        <video [src]="message.fileUrl" controls class="message-video"></video>
+      </button>
+
+      <div *ngIf="!isDeleted && message?.fileType === 'audio'" class="audio-message">
+        <i class="fa-solid fa-microphone"></i>
+        <audio [src]="message.fileUrl" controls preload="metadata"></audio>
+      </div>
+    </div>
+
+    <div class="message-meta">
+      <span *ngIf="isStarred" class="starred-mark" title="Starred">
+        <i class="fa-solid fa-star"></i>
+      </span>
+      <span>{{ formatTime(message?.time || message?.date) }}</span>
+      <i *ngIf="isOwn" class="fa-solid" [ngClass]="message.isRead ? 'fa-check-double read-icon' : 'fa-check'"></i>
+    </div>
+  </div>
+</div>

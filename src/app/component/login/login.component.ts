@@ -1,167 +1,115 @@
-import { AppComponent } from './../../app.component';
-import { UserService } from './../../services/user.service';
-import { ShareFunctionsService } from './../../services/share-functions.service';
-import { Component, ElementRef, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { Router } from '@angular/router';
+import { UserService } from './../../services/user.service';
 
 @Component({
   selector: 'app-login',
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss'],
 })
-export class LoginComponent implements OnInit {
-  hello: any;
-  loginArabic = 'd-none';
-  loginEnglish = 'd-none';
-  dir: any;
-  colorValue: any;
-  mood = 'morning';
-  emailOrPhone: any;
-  password: any;
-  passErr = '';
+export class LoginComponent {
+  emailOrPhone = '';
+  password = '';
   emailErr = '';
-  message: any;
-  morning = 'url(./assets/img/white-abstract-background_23-2148817571.jpg)';
-  night = 'url(./assets/img/6222603.jpg)';
-  language = 'العربية';
-  loading:boolean = false
-  constructor(
-    private ShareFunctionsService: ShareFunctionsService,
-    private elem: ElementRef,
-    private UserService: UserService,
-    private Router: Router,
-    private AppComponent: AppComponent,
-  ) {
+  passErr = '';
+  message = '';
+  loading = false;
+  showPassword = false;
 
-  }
-
-  ngOnInit(): void {
-    alert(
-  'Login with\n' +
-  'Email: User@gmail.com\n' +
-  'Password: 123456'
-);
-
-    localStorage.clear()
-    this.elem.nativeElement.style.setProperty('--bg', this.morning);
-    this.elem.nativeElement.style.setProperty('--bgline', 'rgb(0 0 0 / 20%)');
-
-    if (this.language == 'العربية') {
-      setTimeout(() => {
-        this.hello = 'opacity-0 transition';
-        setTimeout(() => {
-          this.hello = 'd-none';
-
-          setTimeout(() => {
-            this.loginEnglish = 'opacity-0 ';
-
-            setTimeout(() => {
-              this.loginEnglish = 'opacity-100 transition  ';
-            }, 100);
-          }, 10);
-        }, 501);
-      }, 2000);
-    } else {
-      setTimeout(() => {
-        this.hello = 'opacity-0 transition';
-        setTimeout(() => {
-          this.hello = 'd-none';
-
-          setTimeout(() => {
-            this.loginArabic = 'opacity-0 ';
-            setTimeout(() => {
-              this.loginArabic = 'opacity-100 transition  ';
-            }, 100);
-          }, 10);
-        }, 501);
-      }, 2000);
-    }
-
-
-  }
-
-  login() {
-    this.loading = true
-  const user = {
-    emailOrPhone: this.emailOrPhone,
-    password: this.password,
+  // بيانات الحساب التجريبي — غيّرها لتطابق الحساب الموجود في قاعدة البيانات.
+  readonly demoAccount = {
+    emailOrPhone: 'user@gmail.com',
+    password: '123456',
   };
 
-  this.UserService.login(user).subscribe({
-    next: (data: any) => {
-      this.loading = false
-      if (data.emailErr) {
-        this.emailErr = data.emailErr;
-        this.passErr = '';
-        return;
-      }
+  constructor(
+    private userService: UserService,
+    private router: Router
+  ) {}
 
-      if (data.passErr) {
-        this.passErr = data.passErr;
-        this.emailErr = '';
-        return;
-      }
+  login(): void {
+    if (this.loading) return;
 
-      if (data.message === 'error' && data.validationError?.[0]?.[0]?.message) {
-        const msg = data.validationError[0][0].message.replace(/"/g, '');
-        const field = msg.split(' ')[0];
+    this.emailErr = '';
+    this.passErr = '';
+    this.message = '';
 
-        if (field === 'emailOrPhone') {
-          this.emailErr = msg;
-          this.passErr = '';
-        } else if (field === 'password') {
-          this.passErr = msg;
-          this.emailErr = '';
+    const emailOrPhone = this.emailOrPhone.trim();
+    const password = this.password.trim();
+
+    if (!emailOrPhone) {
+      this.emailErr = 'أدخل البريد الإلكتروني أو رقم الهاتف.';
+      return;
+    }
+
+    if (!password) {
+      this.passErr = 'أدخل كلمة المرور.';
+      return;
+    }
+
+    this.loading = true;
+
+    this.userService.login({ emailOrPhone, password }).subscribe({
+      next: (data: any) => {
+        this.loading = false;
+
+        if (data?.emailErr) {
+          this.emailErr = data.emailErr;
+          return;
         }
-        return;
-      }
 
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-        this.emailErr = '';
-        this.passErr = '';
-        this.message = 'welcome';
-        this.UserService.getUserData();
-        this.Router.navigate(['/home']);
-      }
-    },
-    error: (err) => {
-      this.loading = false
-      console.error('Login request failed:', err);
-      this.emailErr = 'Server error. Please try again later.';
-      this.passErr = '';
-    },
-  });
-}
+        if (data?.passErr) {
+          this.passErr = data.passErr;
+          return;
+        }
 
+        if (
+          data?.message === 'error' &&
+          data?.validationError?.[0]?.[0]?.message
+        ) {
+          const msg = data.validationError[0][0].message.replace(/"/g, '');
+          const field = msg.split(' ')[0];
 
-  changeMood() {
-    if (this.mood == 'night') {
-      this.mood = 'morning';
-      this.elem.nativeElement.style.setProperty('--bg', this.morning);
-      this.elem.nativeElement.style.setProperty('--bgline', 'rgb(0 0 0 / 20%)');
-    } else {
-      this.mood = 'night';
-      this.elem.nativeElement.style.setProperty('--bg', this.night);
-      this.elem.nativeElement.style.setProperty(
-        '--bgline',
-        'rgb(255, 255, 255)'
-      );
-    }
-  }
-  changeLang() {
-    if (this.loginArabic == 'd-none') {
-      this.loginArabic = '';
-      this.language = 'English';
-      this.dir = 'rtl';
-      this.loginEnglish = 'd-none';
-    } else {
-      this.loginArabic = 'd-none';
-      this.language = 'العربية';
-      this.dir = 'ltr';
+          if (field === 'emailOrPhone') {
+            this.emailErr = msg;
+          } else if (field === 'password') {
+            this.passErr = msg;
+          } else {
+            this.message = msg;
+          }
 
-      this.loginEnglish = '';
-    }
+          return;
+        }
+
+        if (data?.token) {
+          localStorage.setItem('token', data.token);
+          this.userService.getUserData();
+          this.router.navigate(['/home']);
+          return;
+        }
+
+        this.message = data?.message || 'تعذر تسجيل الدخول.';
+      },
+
+      error: (err: any) => {
+        this.loading = false;
+        this.emailErr =
+          err?.error?.message || 'تعذر الاتصال بالخادم. حاول مرة أخرى.';
+      },
+    });
   }
 
+  useDemoAccount(): void {
+    this.emailOrPhone = this.demoAccount.emailOrPhone;
+    this.password = this.demoAccount.password;
+
+    this.emailErr = '';
+    this.passErr = '';
+    this.message = '';
+    this.showPassword = false;
+  }
+
+  goToRegister(): void {
+    this.router.navigate(['/register']);
+  }
 }

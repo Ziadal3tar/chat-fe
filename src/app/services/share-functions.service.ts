@@ -19,8 +19,7 @@ export class ShareFunctionsService {
   }
   setting=true
   signOut: any ;
-    constructor(private UserService:UserService
-) { }
+    constructor(private UserService:UserService) { }
 
 ngOnInit(): void {
 
