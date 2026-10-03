@@ -18,6 +18,15 @@
     <span><i class="fa-solid fa-circle-exclamation"></i></span>
     {{errorMessage}}
   </div>
+  <div *ngIf="successMessage" class="feedback success">
+    <span><i class="fa-solid fa-circle-check"></i></span>
+    {{successMessage}}
+  </div>
+
+  <div *ngIf="liveNotice" class="feedback live">
+    <span><i class="fa-solid fa-bolt"></i></span>
+    {{liveNotice}}
+  </div>
 
   <section class="composer-card">
     <div class="card-title">

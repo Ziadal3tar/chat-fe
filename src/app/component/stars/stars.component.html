@@ -61,7 +61,7 @@
       <p>Star a message from a conversation and it will appear here.</p>
     </div>
 
-    <article class="star-item" *ngFor="let item of items">
+    <article class="star-item" *ngFor="let item of items; trackBy: trackById" (click)="openInChat(item)" tabindex="0" role="button" (keydown.enter)="openInChat(item)">
       <div class="item-glow"></div>
 
       <div class="avatar-shell">
@@ -75,20 +75,22 @@
           <span><i class="fa-solid fa-star"></i> Saved</span>
         </div>
 
-        <p>{{item.text}}</p>
+        <p class="star-message-text">{{item.text}}</p>
 
         <div class="item-meta">
           <span>
             <i class="fa-solid fa-bookmark"></i>
             {{item.date || 'Saved message'}} <ng-container *ngIf="item.time">· {{item.time}}</ng-container>
           </span>
+          <span *ngIf="item.fileType" class="content-type">{{item.fileType}}</span>
+          <span class="open-chat-hint"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open chat</span>
         </div>
       </div>
 
       <button
         class="delete-button"
         type="button"
-        (click)="requestDelete(item)"
+        (click)="$event.stopPropagation(); requestDelete(item)"
         title="Remove"
         aria-label="Remove saved item"
       >

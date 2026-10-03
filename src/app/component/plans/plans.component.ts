@@ -9,6 +9,7 @@ import {
   takeUntil,
 } from "rxjs";
 import { SocialFeaturesService } from "src/app/services/social-features.service";
+import { SocketService } from "src/app/services/socket.service";
 
 type PlanType = "Reply" | "Send" | "Scheduled";
 
@@ -48,6 +49,8 @@ export class PlansComponent implements OnInit, OnDestroy {
   loading = false;
   saving = false;
   errorMessage = "";
+  successMessage = "";
+  liveNotice = "";
 
   confirmVisible = false;
   confirmTitle = "";
@@ -59,7 +62,8 @@ export class PlansComponent implements OnInit, OnDestroy {
 
   constructor(
     private readonly router: Router,
-    private readonly socialFeaturesService: SocialFeaturesService
+    private readonly socialFeaturesService: SocialFeaturesService,
+    private readonly socketService: SocketService
   ) {}
 
   ngOnInit(): void {
@@ -96,6 +100,8 @@ export class PlansComponent implements OnInit, OnDestroy {
           this.friendsLoading = false;
         },
       });
+
+    this.subscribeToPlanEvents();
   }
 
   ngOnDestroy(): void {
@@ -225,6 +231,8 @@ export class PlansComponent implements OnInit, OnDestroy {
 
   requestAdd(): void {
     this.errorMessage = "";
+    this.successMessage = "";
+    this.liveNotice = "";
 
     const target = this.target.trim();
     const description = this.description.trim();
@@ -319,6 +327,36 @@ export class PlansComponent implements OnInit, OnDestroy {
         this.closeConfirmation();
       },
     });
+  }
+
+  private subscribeToPlanEvents(): void {
+    this.socketService
+      .listen("planDue")
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((event: any) => {
+        if (!event?.targetUserName) return;
+
+        this.liveNotice =
+          event.action === "reply_reminder"
+            ? `It is time to reply to ${event.targetUserName}.`
+            : `It is time to send a message to ${event.targetUserName}.`;
+
+        this.loadPlans();
+      });
+
+    this.socketService
+      .listen("planCompleted")
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((event: any) => {
+        if (!event?.targetUserName) return;
+
+        this.liveNotice =
+          event.action === "scheduled_message"
+            ? `Your scheduled message was sent to ${event.targetUserName}.`
+            : `Your reminder for ${event.targetUserName} is complete.`;
+
+        this.loadPlans();
+      });
   }
 
   private resetComposer(): void {

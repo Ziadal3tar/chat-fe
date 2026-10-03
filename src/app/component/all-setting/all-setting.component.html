@@ -281,7 +281,7 @@
 
           <h2>Preferences</h2>
           <p>
-            Visual and privacy controls prepared for future settings APIs.
+            Personalize how conversations look and how the app feels.
           </p>
         </div>
 
@@ -289,6 +289,40 @@
           <span></span>
           Ready
         </span>
+      </div>
+
+      <div class="chat-background-settings">
+        <div class="chat-background-heading">
+          <div>
+            <span class="section-label">CHAT APPEARANCE</span>
+            <h3>Conversation background</h3>
+            <p>Your choice is stored with your account and appears on every device.</p>
+          </div>
+          <span class="saved-state" *ngIf="!savingChatBackground">
+            <i class="fa-solid fa-cloud-arrow-up"></i> Saved
+          </span>
+          <span class="saved-state saving" *ngIf="savingChatBackground">
+            <i class="fa-solid fa-spinner fa-spin"></i> Saving
+          </span>
+        </div>
+
+        <div class="chat-background-grid">
+          <button
+            type="button"
+            *ngFor="let option of chatBackgroundOptions"
+            class="chat-background-option"
+            [class.active]="chatBackground === option.id"
+            [attr.data-preview]="option.id"
+            (click)="saveChatBackground(option.id)"
+          >
+            <span class="preview-swatch"></span>
+            <span class="preview-copy">
+              <b>{{ option.name }}</b>
+              <small>{{ option.description }}</small>
+            </span>
+            <i *ngIf="chatBackground === option.id" class="fa-solid fa-circle-check"></i>
+          </button>
+        </div>
       </div>
 
       <div class="preference-grid">

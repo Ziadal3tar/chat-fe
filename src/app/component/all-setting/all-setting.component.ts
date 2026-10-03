@@ -15,6 +15,16 @@ export class AllSettingComponent implements OnInit, OnDestroy {
   userData: any = null;
   blockedUsers: any[] = [];
   showBlockedUsers = false;
+  chatBackground = 'aurora';
+  savingChatBackground = false;
+  readonly chatBackgroundOptions = [
+    { id: 'aurora', name: 'Aurora', description: 'Soft violet and blue' },
+    { id: 'midnight', name: 'Midnight', description: 'Dark and focused' },
+    { id: 'paper', name: 'Paper', description: 'Bright and minimal' },
+    { id: 'ocean', name: 'Ocean', description: 'Cool glassy tones' },
+    { id: 'rose', name: 'Rose', description: 'Warm elegant blush' },
+    { id: 'emerald', name: 'Emerald', description: 'Calm green tone' },
+  ];
   loadingBlocked = false;
   actionLoadingId: string | null = null;
   successMessage = '';
@@ -37,6 +47,7 @@ export class AllSettingComponent implements OnInit, OnDestroy {
       .subscribe((data: any) => {
         this.userData = data;
         this.blockedUsers = data?.blockedUsers || [];
+        this.chatBackground = data?.chatPreferences?.chatBackground || 'aurora';
       });
   }
 
@@ -55,6 +66,31 @@ export class AllSettingComponent implements OnInit, OnDestroy {
 
   toggleBlockedUsers(): void {
     this.showBlockedUsers = !this.showBlockedUsers;
+  }
+
+  saveChatBackground(background: string): void {
+    if (!background || this.savingChatBackground) return;
+
+    this.savingChatBackground = true;
+    this.clearMessages();
+    this.chatBackground = background;
+
+    this.userService.updateChatPreferences(background).subscribe({
+      next: (response: any) => {
+        this.savingChatBackground = false;
+        if (response?.user) {
+
+          this.userData.chatPreferences = response.user.chatPreferences;
+
+          this.userService.updateUser(this.userData);
+        }
+        this.successMessage = 'Chat background saved.';
+      },
+      error: (error) => {
+        this.savingChatBackground = false;
+        this.errorMessage = error?.error?.message || 'Could not save chat background.';
+      },
+    });
   }
 
   requestUnblock(user: any): void {

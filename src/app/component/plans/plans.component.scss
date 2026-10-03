@@ -980,3 +980,15 @@
     overflow-y: auto;
   }
 }
+
+
+.feedback.success {
+  background: rgba(236,253,243,.92);
+  border-color: #d1fae5;
+  color: #15803d;
+}
+.feedback.live {
+  background: rgba(239,246,255,.95);
+  border-color: #dbeafe;
+  color: #1d4ed8;
+}

@@ -131,6 +131,15 @@ export class UserService {
     });
   }
 
+
+  updateChatPreferences(chatBackground: string) {
+    return this.http.patch(
+      `${this.baseUrl}/user/preferences`,
+      { chatBackground },
+      { headers: this.authHeaders() }
+    );
+  }
+
   updateProfile(formData: FormData) {
     return this.http.post(`${this.baseUrl}/user/update`, formData, {
       headers: this.authHeaders(),

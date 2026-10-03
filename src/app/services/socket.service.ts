@@ -9,26 +9,36 @@ import { environment } from 'src/environments/environment';
 export class SocketService {
   public socket?: Socket;
   private readonly socketSubject = new ReplaySubject<Socket>(1);
-
   private readonly socketUrl = environment.socketUrl;
 
   connect(_userId?: string): void {
     const token = localStorage.getItem('token');
+    if (!token) return;
 
-    if (!token) {
-      return;
-    }
-
-    if (this.socket?.connected) {
-      return;
-    }
+    if (this.socket?.connected || this.socket?.active) return;
 
     this.socket = io(this.socketUrl, {
-      auth: {
-        token,
-      },
-      transports: ['websocket', 'polling'],
+      auth: { token },
+      transports: ['polling', 'websocket'],
       withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 800,
+      reconnectionDelayMax: 8000,
+      timeout: 20000,
+      path: '/socket.io',
+    });
+
+    this.socket.on('connect', () => {
+      console.info('[Socket] connected', this.socket?.id);
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('[Socket] connect_error', error?.message || error);
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      console.warn('[Socket] disconnected', reason);
     });
 
     this.socketSubject.next(this.socket);
@@ -36,7 +46,7 @@ export class SocketService {
 
   disconnect(): void {
     if (!this.socket) return;
-
+    this.socket.removeAllListeners();
     this.socket.disconnect();
     this.socket = undefined;
   }
@@ -58,10 +68,7 @@ export class SocketService {
           new Observable<T>((subscriber) => {
             const handler = (data: T) => subscriber.next(data);
             socket.on(eventName, handler);
-
-            return () => {
-              socket.off(eventName, handler);
-            };
+            return () => socket.off(eventName, handler);
           })
       )
     );
@@ -70,5 +77,4 @@ export class SocketService {
   get connected(): boolean {
     return !!this.socket?.connected;
   }
-
 }

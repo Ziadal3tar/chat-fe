@@ -2,11 +2,12 @@ import { Component, ElementRef, HostListener, OnInit, ViewChild, OnDestroy } fro
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { filter, Subject, take, takeUntil } from 'rxjs';
 
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { UserService } from './../../services/user.service';
 import { SocketService } from 'src/app/services/socket.service';
 import { SocialFeaturesService } from 'src/app/services/social-features.service';
 import { StoryService } from 'src/app/services/story.service';
+import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-home',
@@ -33,6 +34,18 @@ export class HomeComponent implements OnInit, OnDestroy {
   theOpenedChatId: any;
   nameChat: string | null = null;
   imgChat: string | null = null;
+  chatBackground = 'aurora';
+  chatBackgroundPickerOpen = false;
+  readonly chatBackgroundOptions = [
+    { id: 'aurora', name: 'Aurora', description: 'Soft violet and blue glow' },
+    { id: 'midnight', name: 'Midnight', description: 'Deep, low-light conversation' },
+    { id: 'paper', name: 'Paper', description: 'Clean and bright minimal' },
+    { id: 'ocean', name: 'Ocean', description: 'Cool glassy blue tones' },
+    { id: 'rose', name: 'Rose', description: 'Warm elegant blush tones' },
+    { id: 'emerald', name: 'Emerald', description: 'Calm green premium tone' },
+  ];
+  private pendingFriendId: string | null = null;
+  private pendingMessageId: string | null = null;
 
   // ⏳ Loading / Error State
   isLoadingChat = false;
@@ -41,6 +54,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   actionError = '';
   fileError = '';
   recordingError = '';
+  planNotice = '';
+  private planNoticeTimer: ReturnType<typeof setTimeout> | null = null;
 
   // ✉️ Message Data
   message = '';
@@ -72,6 +87,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   storyCaption = '';
   storySaving = false;
   storyError = '';
+  storyPreviewLoading = false;
   storyGroupIndex = 0;
   storyItemIndex = 0;
 
@@ -116,6 +132,7 @@ activeList: any[] = [];
   constructor(
     private elem: ElementRef,
     private router: Router,
+    private route: ActivatedRoute,
     private socketService: SocketService,
     private userService: UserService,
     private sanitizer: DomSanitizer,
@@ -126,26 +143,36 @@ activeList: any[] = [];
 
   // 🟢 Initialization
   ngOnInit(): void {
-    // 📡 Listen for setting toggles
-    //   this.clickEventSubscription = this.shareFunctions.getClickEvent().subscribe(() => {
-    //   this.toggleSettings();
-    // });
     this.activeList = [];
 
-    // 👤 Listen for user data
+    this.route.queryParamMap
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((params) => {
+        this.pendingFriendId = params.get('friend');
+        this.pendingMessageId = params.get('message');
+
+        if (this.userData && this.pendingFriendId) {
+          this.openPendingChat();
+        }
+      });
+
     this.userService.user$
       .pipe(takeUntil(this.destroy$), filter(Boolean), take(1))
       .subscribe((data: any) => {
         this.userData = data;
+        console.log(data);
+
+        this.chatBackground = data?.chatPreferences?.chatBackground || 'aurora';
         this.loadOnlineFriends();
         this.sortChats(data?.chats || []);
         this.loadStories();
         this.searchFriends();
-        // ⚡️ Connect to socket
+
         this.socketService.connect(this.userData._id);
         this.socketService.emit('join', this.userData._id);
+        this.initializeSocketListeners();
 
-        setTimeout(() => this.initializeSocketListeners(), 500);
+        this.openPendingChat();
       });
   }
 
@@ -156,15 +183,33 @@ activeList: any[] = [];
     this.stopRecording();
     this.closeCallResources(false);
     this.clearCallTimeout();
+    this.clearPlanNotice();
     this.socketService.disconnect();
   }
 
   // 🧠 Socket Listeners
   initializeSocketListeners(): void {
     this.socketService.listen('receiveMessage').pipe(takeUntil(this.destroy$)).subscribe((data: any) => {
-      this.userService.getUserData();
       this.handleIncomingMessage(data);
       setTimeout(() => this.scrollToBottom(true), 0);
+    });
+
+    this.socketService.listen('planDue').pipe(takeUntil(this.destroy$)).subscribe((data: any) => {
+      if (!data?.targetUserName) return;
+      this.showPlanNotice(
+        data.action === 'reply_reminder'
+          ? `It is time to reply to ${data.targetUserName}.`
+          : `It is time to send a message to ${data.targetUserName}.`
+      );
+    });
+
+    this.socketService.listen('planCompleted').pipe(takeUntil(this.destroy$)).subscribe((data: any) => {
+      if (!data?.targetUserName) return;
+      this.showPlanNotice(
+        data.action === 'scheduled_message'
+          ? `Your scheduled message was sent to ${data.targetUserName}.`
+          : `Your reminder for ${data.targetUserName} is complete.`
+      );
     });
 
     this.socketService.listen('messagesRead').pipe(takeUntil(this.destroy$)).subscribe(() => {
@@ -233,7 +278,7 @@ activeList: any[] = [];
 
       if (isCurrentChat) {
         if (!alreadyVisible) {
-          this.theChat.push({ ...incomingMessage, isRead: true });
+          this.upsertMessage(incomingMessage, true);
         }
         newChat.unreadCount = 0;
         this.markAsRead(chatId);
@@ -244,7 +289,7 @@ activeList: any[] = [];
 
       if (isCurrentChat) {
         if (!alreadyVisible) {
-          this.theChat.push({ ...incomingMessage, isRead: true });
+          this.upsertMessage(incomingMessage, true);
         }
         chat.unreadCount = 0;
         this.markAsRead(chatId);
@@ -443,10 +488,24 @@ activeList: any[] = [];
     if (!notification) return;
 
     if (
-      ['message', 'message_edited', 'message_deleted'].includes(notification.type) &&
+      ['message', 'message_edited', 'message_deleted', 'scheduled_message'].includes(notification.type) &&
       notification.data?.chatId
     ) {
       this.openChatFromNotification(notification);
+      return;
+    }
+
+    if (
+      ['plan_reminder', 'scheduled_message_sent', 'plan_completed'].includes(notification.type) &&
+      notification.data?.targetUserId
+    ) {
+      const friend = (this.userData?.friends || []).find(
+        (item: any) => item?._id === notification.data.targetUserId
+      );
+
+      if (friend) {
+        this.openChatByFriend(friend, notification.data?.messageId);
+      }
       return;
     }
 
@@ -654,26 +713,45 @@ activeList: any[] = [];
   }
 
   closeStoryComposer(): void {
-    if (this.storyPreviewUrl) URL.revokeObjectURL(this.storyPreviewUrl);
+    this.revokeObjectUrl(this.storyPreviewUrl);
     this.storyComposerOpen = false;
     this.storyFile = null;
     this.storyPreviewUrl = '';
     this.storyCaption = '';
     this.storyError = '';
+    this.storyPreviewLoading = false;
+
+    if (this.storyFileInput?.nativeElement) {
+      this.storyFileInput.nativeElement.value = '';
+    }
   }
 
-  onStoryFileSelected(event: any): void {
-    const input = event?.target as HTMLInputElement | null;
-    const file = input?.files?.[0] as File | undefined;
+  private revokeObjectUrl(url: string | SafeUrl | null | undefined): void {
+    if (typeof url === 'string' && url.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {}
+    }
+  }
+
+  private readFileAsDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        if (typeof result === 'string') resolve(result);
+        else reject(new Error('Unable to read file preview'));
+      };
+      reader.onerror = () => reject(new Error('Unable to read file preview'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async onStoryFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
 
     this.storyError = '';
-
-    if (this.storyPreviewUrl) {
-      URL.revokeObjectURL(this.storyPreviewUrl);
-    }
-
-    this.storyFile = null;
-    this.storyPreviewUrl = '';
 
     if (!file) return;
 
@@ -689,17 +767,33 @@ activeList: any[] = [];
       return;
     }
 
+    this.revokeObjectUrl(this.storyPreviewUrl);
     this.storyFile = file;
-    this.storyPreviewUrl = URL.createObjectURL(file);
+    this.storyPreviewUrl = '';
+    this.storyPreviewLoading = true;
+
+    try {
+      if (file.type.startsWith('image/')) {
+        // Data URL avoids blob/CSP preview issues on the deployed static app.
+        this.storyPreviewUrl = await this.readFileAsDataUrl(file);
+      } else {
+        this.storyPreviewUrl = URL.createObjectURL(file);
+      }
+    } catch {
+      this.storyFile = null;
+      this.storyError = 'The selected file could not be previewed. Please choose another file.';
+      if (input) input.value = '';
+    } finally {
+      this.storyPreviewLoading = false;
+    }
   }
 
   resetStorySelection(): void {
-    if (this.storyPreviewUrl) {
-      URL.revokeObjectURL(this.storyPreviewUrl);
-    }
-
+    this.revokeObjectUrl(this.storyPreviewUrl);
     this.storyFile = null;
     this.storyPreviewUrl = '';
+    this.storyError = '';
+    this.storyPreviewLoading = false;
 
     if (this.storyFileInput?.nativeElement) {
       this.storyFileInput.nativeElement.value = '';
@@ -707,11 +801,19 @@ activeList: any[] = [];
   }
 
   publishStory(): void {
-    if (!this.storyFile || this.storySaving) return;
+    if (!this.storyFile || this.storySaving || this.storyPreviewLoading) return;
     this.storySaving = true;
-    this.storyService.createStory(this.storyFile, this.storyCaption).subscribe({
-      next: () => { this.storySaving = false; this.closeStoryComposer(); this.loadStories(); },
-      error: (error) => { this.storySaving = false; this.storyError = error?.error?.message || 'Story could not be uploaded.'; },
+    this.storyError = '';
+    this.storyService.createStory(this.storyFile, this.storyCaption.trim()).subscribe({
+      next: () => {
+        this.storySaving = false;
+        this.closeStoryComposer();
+        this.loadStories();
+      },
+      error: (error) => {
+        this.storySaving = false;
+        this.storyError = error?.error?.message || 'Story could not be uploaded. Please try again.';
+      },
     });
   }
 
@@ -821,9 +923,21 @@ activeList: any[] = [];
     const peerId = this.callPeerId;
     if (!peerId) throw new Error('Missing call peer');
     this.peerConnection?.close();
-    this.peerConnection = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    });
+    const iceServers: RTCIceServer[] = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      { urls: 'stun:global.stun.twilio.com:3478' },
+    ];
+
+    if (environment.turn?.urls && environment.turn?.username && environment.turn?.credential) {
+      iceServers.push({
+        urls: environment.turn.urls,
+        username: environment.turn.username,
+        credential: environment.turn.credential,
+      });
+    }
+
+    this.peerConnection = new RTCPeerConnection({ iceServers });
 
     this.localStream?.getTracks().forEach((track) => this.peerConnection!.addTrack(track, this.localStream!));
     this.remoteStream = new MediaStream();
@@ -983,6 +1097,149 @@ activeList: any[] = [];
     }, 0);
   }
 
+  private showPlanNotice(message: string): void {
+    this.planNotice = message;
+    if (this.planNoticeTimer) clearTimeout(this.planNoticeTimer);
+    this.planNoticeTimer = setTimeout(() => this.clearPlanNotice(), 7000);
+  }
+
+  clearPlanNotice(): void {
+    if (this.planNoticeTimer) {
+      clearTimeout(this.planNoticeTimer);
+      this.planNoticeTimer = null;
+    }
+    this.planNotice = '';
+  }
+
+  private updateConversationPreview(message: any): void {
+    const chatId = message?.chatId;
+    if (!chatId) return;
+
+    const friendId = message?.sendTo?._id || message?.sendTo;
+    const chatIndex = this.myChats.findIndex((chat) => chat?._id === chatId);
+
+    if (chatIndex === -1) {
+      const friend = (this.userData?.friends || []).find(
+        (item: any) => item?._id === friendId
+      );
+
+      if (!friend) return;
+
+      this.myChats.unshift({
+        _id: chatId,
+        participants: [friend],
+        lastMessage: message,
+        unreadCount: 0,
+      });
+    } else {
+      const chat = this.myChats[chatIndex];
+      chat.lastMessage = message;
+      chat.unreadCount = 0;
+      this.myChats.splice(chatIndex, 1);
+      this.myChats.unshift(chat);
+    }
+
+    this.activeList = this.searchTerm?.trim() ? this.filteredFriends : this.myChats;
+  }
+
+  private upsertMessage(message: any, markRead = false): void {
+    if (!message?._id) return;
+    const index = this.theChat.findIndex((entry) => entry?._id === message._id);
+
+    if (index === -1) {
+      this.theChat.push({
+        ...message,
+        isRead: markRead ? true : message.isRead,
+      });
+      return;
+    }
+
+    this.theChat[index] = {
+      ...this.theChat[index],
+      ...message,
+      isRead: markRead ? true : (message.isRead ?? this.theChat[index].isRead),
+    };
+  }
+
+  private openPendingChat(): void {
+    if (!this.pendingFriendId || !this.userData?._id) return;
+
+    const friend = (this.userData?.friends || []).find(
+      (item: any) => item?._id === this.pendingFriendId
+    );
+    if (!friend) return;
+
+    const messageId = this.pendingMessageId || undefined;
+    this.openChatByFriend(friend, messageId);
+
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {},
+      replaceUrl: true,
+    });
+
+    this.pendingFriendId = null;
+    this.pendingMessageId = null;
+  }
+
+  private focusMessage(messageId?: string): void {
+    if (!messageId) return;
+    setTimeout(() => {
+      const node = this.chatContainer?.nativeElement?.querySelector(
+        `[data-message-id="${messageId}"]`
+      ) as HTMLElement | null;
+
+      if (!node) return;
+      node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      node.classList.add('focus-message');
+      setTimeout(() => node.classList.remove('focus-message'), 1800);
+    }, 180);
+  }
+
+  toggleChatBackgroundPicker(): void {
+    this.chatBackgroundPickerOpen = !this.chatBackgroundPickerOpen;
+  }
+
+setChatBackground(value: string): void {
+  const previous = this.chatBackground;
+  const nextBackground = value || 'aurora';
+
+  // Update the UI immediately
+  this.chatBackground = nextBackground;
+
+  this.userService.updateChatPreferences(nextBackground).subscribe({
+    next: (response: any) => {
+      const nextUser = response?.user;
+
+      if (nextUser) {
+
+        this.userData = {
+          ...this.userData,
+          ...nextUser,
+          friends: nextUser.friends ?? this.userData?.friends ?? [],
+          chats: nextUser.chats ?? this.userData?.chats ?? [],
+          chatPreferences: {
+            ...(this.userData?.chatPreferences || {}),
+            ...(nextUser.chatPreferences || {}),
+            chatBackground: nextBackground,
+          },
+        };
+
+        // Keep the currently displayed conversations intact.
+        this.sortChats(this.userData?.chats || this.myChats);
+      }
+
+      this.chatBackgroundPickerOpen = false;
+      this.actionError = '';
+    },
+
+    error: () => {
+      this.chatBackground = previous;
+      this.actionError = 'Chat background could not be saved.';
+    },
+  });
+}
+
   // ✉️ Send message or file
   sendMessage(): void {
     if (this.editingMessage) {
@@ -1020,7 +1277,8 @@ activeList: any[] = [];
       if (typeof newMsg.sendTo === 'string')
         newMsg.sendTo = { _id: newMsg.sendTo };
 
-      this.theChat.push(newMsg);
+      this.upsertMessage(newMsg, true);
+      this.updateConversationPreview(newMsg);
       setTimeout(() => this.scrollToBottom(true), 0);
       },
       error: () => {
@@ -1267,7 +1525,7 @@ activeList: any[] = [];
     }
   }
 
-  private openChatByFriend(friend: any): void {
+  openChatByFriend(friend: any, targetMessageId?: string): void {
     if (!friend?._id || !this.userData?._id) return;
 
     this.theChat = [];
@@ -1305,7 +1563,10 @@ activeList: any[] = [];
             this.markMessagesAsRead();
           }
 
-          setTimeout(() => this.scrollToBottom(true), 0);
+          setTimeout(() => {
+            this.scrollToBottom(true);
+            this.focusMessage(targetMessageId);
+          }, 0);
         },
         error: () => {
           this.isLoadingChat = false;
@@ -1315,84 +1576,102 @@ activeList: any[] = [];
   }
 
   // 📎 Handle file selection (image / video / pdf)
-  async onFileSelected(event: any): Promise<void> {
-    this.cancelPreview();
-    this.fileError = '';
-    const file = event.target.files?.[0];
+  async onFileSelected(event: Event): Promise<void> {
+    // Read the newly selected file BEFORE resetting the previous preview.
+    // The previous implementation cleared input.value first, which could
+    // empty input.files before the selected File was captured.
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
     if (!file) return;
+
+    this.clearAttachmentPreview(false);
+    this.fileError = '';
+
+    if (file.size > 50 * 1024 * 1024) {
+      this.fileError = 'Files must be 50 MB or smaller.';
+      if (input) input.value = '';
+      return;
+    }
+
+    const type = file.type;
+    const supported =
+      type.startsWith('image/') ||
+      type.startsWith('video/') ||
+      type.startsWith('audio/') ||
+      type === 'application/pdf';
+
+    if (!supported) {
+      this.fileError = 'Only images, videos, audio, or PDF files are supported.';
+      if (input) input.value = '';
+      return;
+    }
 
     this.selectedFile = file;
     this.fileName = file.name;
-    const type = file.type;
+
+    const blobUrl = URL.createObjectURL(file);
+    this.videoBlobUrl = blobUrl;
+    const safeBlob = this.sanitizer.bypassSecurityTrustUrl(blobUrl);
 
     if (type.startsWith('image/')) {
       this.fileType = 'image';
-      const reader = new FileReader();
-      reader.onload = () =>
-        (this.filePreview = this.sanitizer.bypassSecurityTrustUrl(
-          reader.result as string
-        ));
-      reader.readAsDataURL(file);
-    } else if (type.startsWith('video/')) {
-      this.handleVideoFile(file);
-    } else if (type.startsWith('audio/')) {
-      this.fileType = 'audio';
-      const reader = new FileReader();
-      reader.onload = () =>
-        (this.filePreview = this.sanitizer.bypassSecurityTrustUrl(reader.result as string));
-      reader.readAsDataURL(file);
-    } else if (type === 'application/pdf') {
-      this.fileType = 'pdf';
-      const reader = new FileReader();
-      reader.onload = () =>
-        (this.filePreview = this.sanitizer.bypassSecurityTrustUrl(
-          reader.result as string
-        ));
-      reader.readAsDataURL(file);
-    } else {
-      this.selectedFile = null;
-      this.fileType = null;
-      this.fileName = null;
-      this.fileError = 'Only images, videos, audio, or PDF files are supported.';
+      this.filePreview = safeBlob;
+      return;
     }
+
+    if (type.startsWith('audio/')) {
+      this.fileType = 'audio';
+      this.filePreview = safeBlob;
+      return;
+    }
+
+    if (type === 'application/pdf') {
+      this.fileType = 'pdf';
+      this.filePreview = safeBlob;
+      return;
+    }
+
+    await this.handleVideoFile(file, blobUrl, safeBlob);
   }
 
   // 🎥 Handle video logic
-  handleVideoFile(file: File): void {
-    const blobUrl = URL.createObjectURL(file);
-    this.videoBlobUrl = blobUrl;
+  async handleVideoFile(file: File, blobUrl?: string, safeBlob?: SafeUrl): Promise<void> {
+    const objectUrl = blobUrl || URL.createObjectURL(file);
+    const safeUrl = safeBlob || this.sanitizer.bypassSecurityTrustUrl(objectUrl);
+
+    this.videoBlobUrl = objectUrl;
+    this.fileType = 'video';
+    this.videoUrl = safeUrl;
+    this.videoPreview = safeUrl;
+    this.filePreview = safeUrl;
+
     const video = document.createElement('video');
-    video.src = blobUrl;
+    video.preload = 'metadata';
+    video.src = objectUrl;
 
-    video.onloadedmetadata = () => {
-      this.videoDuration = video.duration;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        video.onloadedmetadata = () => resolve();
+        video.onerror = () => reject(new Error('metadata'));
+      });
+    } catch {
+      this.fileError = 'This video could not be previewed. Please choose another file.';
+      this.cancelPreview();
+      return;
+    }
 
-      if (video.duration > 600) {
-        this.fileError = 'Videos longer than 10 minutes are not supported.';
-        URL.revokeObjectURL(blobUrl);
-        this.selectedFile = null;
-        this.fileType = null;
-        this.fileName = null;
-        this.videoUrl = null;
-        this.videoPreview = null;
-        this.filePreview = null;
-        return;
-      }
+    this.videoDuration = video.duration || 0;
 
-      this.fileType = 'video';
-      const safeBlob = this.sanitizer.bypassSecurityTrustUrl(blobUrl);
+    if (this.videoDuration > 600) {
+      this.fileError = 'Videos longer than 10 minutes are not supported.';
+      this.cancelPreview();
+      return;
+    }
 
-      if (video.duration > 30) {
-        this.videoUrl = safeBlob;
-        this.videoPreview = null;
-        this.trimStart = 0;
-        this.trimEnd = video.duration;
-      } else {
-        this.videoUrl = safeBlob;
-        this.videoPreview = safeBlob;
-        this.filePreview = safeBlob;
-      }
-    };
+    if (this.videoDuration > 30) {
+      this.trimStart = 0;
+      this.trimEnd = this.videoDuration;
+    }
   }
 
   // ✂️ Trim video
@@ -1470,28 +1749,27 @@ activeList: any[] = [];
     });
   }
 
-  // 🧹 Cancel preview
-  cancelPreview(): void {
-    const revoke = (url: any) => {
-      if (typeof url === 'string' && url.startsWith('blob:')) {
-        try {
-          URL.revokeObjectURL(url);
-        } catch {}
-      }
-    };
-    revoke(this.videoBlobUrl);
-    revoke(this.recordedAudioBlobUrl);
+  // 🧹 Cancel attachment preview
+  private clearAttachmentPreview(clearInput = true): void {
+    this.revokeObjectUrl(this.videoBlobUrl);
+    this.revokeObjectUrl(this.recordedAudioBlobUrl);
     this.videoBlobUrl = null;
     this.recordedAudioBlobUrl = null;
 
     this.videoUrl = this.videoPreview = this.filePreview = null;
     this.fileType = this.selectedFile = this.fileName = null;
-    this.fileError = '';
     this.videoDuration = 0;
+    this.trimStart = 0;
+    this.trimEnd = 0;
 
-    if (this.fileInput?.nativeElement) {
+    if (clearInput && this.fileInput?.nativeElement) {
       this.fileInput.nativeElement.value = '';
     }
+  }
+
+  cancelPreview(): void {
+    this.clearAttachmentPreview(true);
+    this.fileError = '';
   }
 
   // 🔍 Search

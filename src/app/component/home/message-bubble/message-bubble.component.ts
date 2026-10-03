@@ -20,7 +20,8 @@ export class MessageBubbleComponent {
   menuOpen = false;
 
   get isOwn(): boolean {
-    return this.message?.sendBy?._id === this.userId || this.message?.sendBy === this.userId;
+    const senderId = this.message?.sendBy?._id || this.message?.sendBy;
+    return String(senderId || '') === String(this.userId || '');
   }
 
   get isDeleted(): boolean {

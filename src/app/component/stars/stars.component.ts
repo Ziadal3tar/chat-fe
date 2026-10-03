@@ -59,6 +59,24 @@ export class StarsComponent implements OnInit, OnDestroy {
       });
   }
 
+
+  openInChat(item: any): void {
+    const friendId = item?.friendId;
+    if (!friendId) {
+      this.errorMessage = "This conversation could not be identified.";
+      return;
+    }
+
+    this.router.navigate(["/home"], {
+      queryParams: {
+        friend: friendId,
+        message: item?._id || null,
+      },
+    });
+  }
+
+  trackById(_index: number, item: any): string { return item?._id || String(_index); }
+
   requestDelete(item: any): void {
     if (!item?._id) return;
 

@@ -1,4 +1,9 @@
 <div class="messenger-shell">
+  <div *ngIf="planNotice" class="plan-live-toast" role="status">
+    <span class="plan-live-icon"><i class="fa-solid fa-bolt"></i></span>
+    <span>{{ planNotice }}</span>
+    <button type="button" (click)="clearPlanNotice()" aria-label="Dismiss"><i class="fa-solid fa-xmark"></i></button>
+  </div>
   <div class="messenger-layout">
 
     <!-- ==================== SEARCH / SETTINGS ROUTE ==================== -->
@@ -7,7 +12,7 @@
     </div>
 
     <!-- ==================== CHAT ==================== -->
-    <section [ngClass]="chat" class="chat-panel">
+    <section [ngClass]="chat" class="chat-panel" [attr.data-chat-bg]="chatBackground">
 
       <!-- Empty chat state -->
       <div class="chat-empty-state" [ngClass]="{ 'is-hidden': chatItem != 'd-none' }">
@@ -62,6 +67,10 @@
                 <i class="fa-regular fa-user"></i>
                 View profile
               </button>
+              <button ngbDropdownItem type="button" (click)="toggleChatBackgroundPicker()">
+                <i class="fa-solid fa-palette"></i>
+                Chat background
+              </button>
               <button ngbDropdownItem type="button" (click)="closeChat()">
                 <i class="fa-solid fa-xmark"></i>
                 Close chat
@@ -78,6 +87,7 @@
           [message]="message"
           [userId]="userData?._id"
           [index]="i"
+          [attr.data-message-id]="message?._id"
           (mediaSelected)="openMediaViewer($event.url, $event.type)"
           (action)="onMessageAction($event)">
         </app-message-bubble>
@@ -101,7 +111,7 @@
         </div>
 
         <div class="attachment-control" [class.disabled-control]="!!editingMessage">
-          <input id="fileInput" type="file" class="d-none"
+          <input id="fileInput" type="file" accept="image/*,video/mp4,video/webm,video/quicktime,audio/*,application/pdf" class="d-none"
             (change)="onFileSelected($event)" #fileInput>
           <button type="button" class="composer-icon" (click)="fileInput.click()" title="Attach file" [disabled]="!!editingMessage">
             <i class="fa-solid fa-paperclip"></i>
@@ -227,6 +237,9 @@
               <span class="story-ring" [class.viewed]="!group.hasUnviewed">
                 <span class="story-avatar-image" [style.background-image]="'url(' + group.user?.profileImage + ')'">
                 </span>
+                <small *ngIf="group.user?._id === userData?._id" class="story-view-count">
+                  {{ group.stories?.[0]?.viewerCount || 0 }}
+                </small>
               </span>
               <span>{{ group.user?.userName || 'Friend' }}</span>
             </button>
@@ -285,6 +298,41 @@
 </div>
 
 
+<!-- Chat background picker -->
+<div *ngIf="chatBackgroundPickerOpen" class="feature-overlay" (click)="toggleChatBackgroundPicker()">
+  <section class="background-picker-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    <button type="button" class="feature-close" (click)="toggleChatBackgroundPicker()" aria-label="Close">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <div class="feature-heading">
+      <span class="feature-icon"><i class="fa-solid fa-palette"></i></span>
+      <div>
+        <span class="section-kicker">CHAT APPEARANCE</span>
+        <h3>Choose your chat background</h3>
+        <p>The choice is saved to your account and follows you across devices.</p>
+      </div>
+    </div>
+
+    <div class="background-grid">
+      <button
+        type="button"
+        *ngFor="let option of chatBackgroundOptions"
+        class="background-option"
+        [class.active]="chatBackground === option.id"
+        [attr.data-preview]="option.id"
+        (click)="setChatBackground(option.id)"
+      >
+        <span class="background-swatch"></span>
+        <span>
+          <strong>{{ option.name }}</strong>
+          <small>{{ option.description }}</small>
+        </span>
+        <i *ngIf="chatBackground === option.id" class="fa-solid fa-circle-check"></i>
+      </button>
+    </div>
+  </section>
+</div>
+
 <!-- Story composer -->
 <div *ngIf="storyComposerOpen" class="feature-overlay" (click)="closeStoryComposer()">
   <section class="story-composer-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
@@ -301,17 +349,52 @@
       <input #storyFileInput type="file" accept="image/*,video/*" (change)="onStoryFileSelected($event)">
     </label>
 
-    <div *ngIf="storyPreviewUrl" class="story-preview-large">
-      <img *ngIf="storyFile?.type?.startsWith('image/')" [src]="storyPreviewUrl" alt="Story preview">
-      <video *ngIf="storyFile?.type?.startsWith('video/')" [src]="storyPreviewUrl" controls></video>
-      <button type="button" class="story-change-btn" (click)="resetStorySelection()">Change</button>
+    <div *ngIf="storyFile" class="story-selected-file">
+      <div class="story-file-meta">
+        <span class="story-file-icon">
+          <i class="fa-solid" [ngClass]="storyFile.type?.startsWith('video/') ? 'fa-film' : 'fa-image'"></i>
+        </span>
+        <div>
+          <strong>{{ storyFile.name }}</strong>
+          <small>{{ storyFile.type?.startsWith('video/') ? 'Video' : 'Image' }} · {{ (storyFile.size / 1024 / 1024) | number:'1.1-1' }} MB</small>
+        </div>
+        <button type="button" class="story-change-btn" (click)="resetStorySelection()" aria-label="Choose another file">
+          Change
+        </button>
+      </div>
     </div>
 
-    <textarea [(ngModel)]="storyCaption" maxlength="500" rows="3" placeholder="Add a caption..."></textarea>
-    <div *ngIf="storyError" class="feature-error">{{ storyError }}</div>
+    <div *ngIf="storyPreviewLoading" class="story-preview-loading" aria-live="polite">
+      <span class="button-spinner"></span>
+      Preparing preview...
+    </div>
+
+    <div *ngIf="storyPreviewUrl && !storyPreviewLoading" class="story-preview-large">
+      <div class="story-preview-badge"><i class="fa-solid fa-wand-magic-sparkles"></i> Preview</div>
+      <img *ngIf="storyFile?.type?.startsWith('image/')" [src]="storyPreviewUrl" alt="Selected story preview">
+      <video *ngIf="storyFile?.type?.startsWith('video/')" [src]="storyPreviewUrl" controls playsinline preload="metadata"></video>
+      <div class="story-preview-footer">
+        <span><i class="fa-regular fa-clock"></i> Expires in 24 hours</span>
+        <button type="button" (click)="resetStorySelection()">Choose another</button>
+      </div>
+    </div>
+
+    <div class="story-caption-field">
+      <div class="story-caption-label">
+        <span>Caption</span>
+        <span>{{ storyCaption.length }}/500</span>
+      </div>
+      <textarea [(ngModel)]="storyCaption" maxlength="500" rows="3" placeholder="Add a caption to your story..."></textarea>
+    </div>
+
+    <div *ngIf="storyError" class="feature-error" role="alert">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span>{{ storyError }}</span>
+    </div>
+
     <div class="feature-actions">
       <button type="button" class="secondary-feature-btn" (click)="closeStoryComposer()">Cancel</button>
-      <button type="button" class="primary-feature-btn" [disabled]="!storyFile || storySaving" (click)="publishStory()">
+      <button type="button" class="primary-feature-btn" [disabled]="!storyFile || storySaving || storyPreviewLoading" (click)="publishStory()">
         <i class="fa-solid" [ngClass]="storySaving ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i>
         {{ storySaving ? 'Publishing...' : 'Publish story' }}
       </button>
@@ -325,7 +408,13 @@
     <div class="story-viewer-top">
       <div class="story-viewer-user">
         <div class="story-viewer-avatar" [style.background-image]="'url(' + currentStoryGroup?.user?.profileImage + ')'" ></div>
-        <div><strong>{{ currentStoryGroup?.user?.userName }}</strong><span>{{ currentStory?.createdAt | date:'short' }}</span></div>
+        <div>
+          <strong>{{ currentStoryGroup?.user?.userName }}</strong>
+          <span>{{ currentStory?.createdAt | date:'short' }}</span>
+          <small *ngIf="currentStory?.canSeeViewerCount">
+            <i class="fa-regular fa-eye"></i> {{ currentStory?.viewerCount || 0 }} views
+          </small>
+        </div>
       </div>
       <div class="story-viewer-actions">
         <button *ngIf="currentStoryGroup?.user?._id === userData?._id" type="button" (click)="deleteOwnStory(currentStory._id)"><i class="fa-regular fa-trash-can"></i></button>
