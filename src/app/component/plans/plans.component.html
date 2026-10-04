@@ -239,7 +239,7 @@
       <p>Create a reminder or schedule a message above.</p>
     </div>
 
-    <article class="reminder-item" *ngFor="let item of reminders">
+    <article class="reminder-item" *ngFor="let item of reminders; trackBy: trackByPlan">
       <div class="timeline-line"></div>
 
       <div
@@ -275,20 +275,27 @@
         <small>
           <i class="fa-regular fa-calendar"></i>
           {{item.scheduledAt | date:'medium'}}
-          · {{item.status}}
         </small>
+        <span class="plan-status" [class.pending]="item.status === 'pending'" [class.processing]="item.status === 'processing'" [class.completed]="item.status === 'completed'" [class.failed]="item.status === 'failed'" [class.cancelled]="item.status === 'cancelled'">
+          {{item.status}}
+        </span>
       </div>
 
-      <button
-        *ngIf="item.status === 'pending'"
-        class="delete-button"
-        type="button"
-        (click)="requestDelete(item._id)"
-        title="Cancel"
-        aria-label="Cancel plan"
-      >
-        <i class="fa-solid fa-xmark"></i>
-      </button>
+      <div class="reminder-actions">
+        <button *ngIf="item.target?._id" class="open-chat-button" type="button" (click)="openPlanChat(item)" title="Open chat" aria-label="Open chat">
+          <i class="fa-regular fa-message"></i>
+        </button>
+        <button
+          *ngIf="item.status === 'pending'"
+          class="delete-button"
+          type="button"
+          (click)="requestDelete(item._id)"
+          title="Cancel"
+          aria-label="Cancel plan"
+        >
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
     </article>
   </section>
 </section>

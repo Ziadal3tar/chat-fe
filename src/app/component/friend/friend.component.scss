@@ -113,8 +113,8 @@
 
 .primary-button {
   color: #fff;
-  background: linear-gradient(135deg, #5b5bf7 0%, #4f46e5 100%);
-  border: 1px solid #4f46e5;
+  background: linear-gradient(135deg, #3eab90 0%, #095553 100%);
+  border: 1px solid #3eab90 ;
   box-shadow: 0 9px 20px rgba(79, 70, 229, 0.19);
 }
 
@@ -225,12 +225,12 @@ button:disabled {
   place-items: center;
   flex: 0 0 45px;
   border-radius: 15px;
-  color: #2563eb;
+  color: #3eab90 ;
   background: #eff6ff;
 }
 
 .stat-icon.accent {
-  color: #7c3aed;
+  color: #3eab90 ;
   background: #f5f3ff;
 }
 
@@ -299,7 +299,7 @@ button:disabled {
   border: 1px solid #dfe5ff;
   border-radius: 11px;
   background: #f3f4ff;
-  color: #5b5bf7;
+  color: #3eab90 ;
   font-size: 11px;
   font-weight: 850;
 }
@@ -428,7 +428,7 @@ button:disabled {
 }
 
 .request-badge {
-  color: #4f46e5;
+  color: #3eab90 ;
   background: rgba(238, 242, 255, .92);
   border: 1px solid #e0e7ff;
 }
@@ -456,7 +456,7 @@ button:disabled {
 }
 
 .connection-label i {
-  color: #7c3aed;
+  color: #3eab90 ;
   font-size: 8px;
 }
 
@@ -564,7 +564,7 @@ button:disabled {
   place-items: center;
   flex: 0 0 33px;
   border-radius: 11px;
-  color: #5b5bf7;
+  color: #3eab90 ;
   background: #f0efff;
 }
 
@@ -672,8 +672,8 @@ button:disabled {
   height: 25px;
   margin-bottom: 7px;
   border: 3px solid #e0e7ff;
-  border-top-color: #5b5bf7;
-  border-right-color: #7c3aed;
+  border-top-color: #3eab90 ;
+  border-right-color: #3eab90 ;
   border-radius: 50%;
   animation: spin .8s linear infinite;
 }
@@ -723,7 +723,7 @@ button:disabled {
   display: grid;
   place-items: center;
   background: linear-gradient(135deg, #eef2ff, #f5f3ff);
-  color: #5b5bf7;
+  color: #3eab90 ;
   font-size: 23px;
   box-shadow: 0 10px 25px rgba(79,70,229,.1);
 }

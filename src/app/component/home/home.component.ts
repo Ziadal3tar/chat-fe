@@ -1,6 +1,6 @@
 import { Component, ElementRef, HostListener, OnInit, ViewChild, OnDestroy } from '@angular/core';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
-import { filter, Subject, take, takeUntil } from 'rxjs';
+import { debounceTime, distinctUntilChanged, filter, Subject, take, takeUntil } from 'rxjs';
 
 import { ActivatedRoute, Router } from '@angular/router';
 import { UserService } from './../../services/user.service';
@@ -8,6 +8,7 @@ import { SocketService } from 'src/app/services/socket.service';
 import { SocialFeaturesService } from 'src/app/services/social-features.service';
 import { StoryService } from 'src/app/services/story.service';
 import { environment } from 'src/environments/environment';
+import { HttpEventType } from '@angular/common/http';
 
 @Component({
   selector: 'app-home',
@@ -50,6 +51,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   // ⏳ Loading / Error State
   isLoadingChat = false;
   isSendingMessage = false;
+  isLoadingOlder = false;
+  hasMoreMessages = false;
+  nextMessagesCursor: string | null = null;
   chatError = '';
   actionError = '';
   fileError = '';
@@ -64,6 +68,19 @@ export class HomeComponent implements OnInit, OnDestroy {
   profileOpen = false;
   confirmation: { open: boolean; title: string; text: string; action: 'delete' | 'save-edit' | null; message?: any } = { open: false, title: '', text: '', action: null };
   searchTerm: any = '';
+  chatSearchOpen = false;
+  messageSearchQuery = '';
+  messageSearchResults: any[] = [];
+  messageSearchLoading = false;
+  replyToMessage: any = null;
+  mediaUploadProgress: number | null = null;
+  isFriendTyping = false;
+  connectionState: 'online' | 'offline' | 'reconnecting' = 'online';
+  pinnedMessages: any[] = [];
+  pinnedPanelOpen = false;
+  private readonly typingInput$ = new Subject<string>();
+  private typingStopTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly messageSearch$ = new Subject<string>();
 
   // ⭐ Message utilities
   emojiOpen = false;
@@ -82,6 +99,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   stories: any[] = [];
   storyComposerOpen = false;
   storyViewerOpen = false;
+  storyViewersOpen = false;
   storyFile: File | null = null;
   storyPreviewUrl = '';
   storyCaption = '';
@@ -90,6 +108,12 @@ export class HomeComponent implements OnInit, OnDestroy {
   storyPreviewLoading = false;
   storyGroupIndex = 0;
   storyItemIndex = 0;
+  storyProgress = 0;
+  storyPaused = false;
+  private storyProgressTimer: ReturnType<typeof setInterval> | null = null;
+  private storyProgressDuration = 30000;
+  private storyProgressElapsed = 0;
+  private storyProgressLastTick = 0;
 
   // 📞 Voice / video calls
   callOpen = false;
@@ -145,6 +169,14 @@ activeList: any[] = [];
   ngOnInit(): void {
     this.activeList = [];
 
+    this.typingInput$
+      .pipe(debounceTime(250), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe(() => this.emitTyping());
+
+    this.messageSearch$
+      .pipe(debounceTime(250), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((query) => this.performMessageSearch(query));
+
     this.route.queryParamMap
       .pipe(takeUntil(this.destroy$))
       .subscribe((params) => {
@@ -160,7 +192,6 @@ activeList: any[] = [];
       .pipe(takeUntil(this.destroy$), filter(Boolean), take(1))
       .subscribe((data: any) => {
         this.userData = data;
-        console.log(data);
 
         this.chatBackground = data?.chatPreferences?.chatBackground || 'aurora';
         this.loadOnlineFriends();
@@ -184,6 +215,8 @@ activeList: any[] = [];
     this.closeCallResources(false);
     this.clearCallTimeout();
     this.clearPlanNotice();
+    this.clearTypingTimer();
+    this.stopStoryProgress();
     this.socketService.disconnect();
   }
 
@@ -212,8 +245,21 @@ activeList: any[] = [];
       );
     });
 
-    this.socketService.listen('messagesRead').pipe(takeUntil(this.destroy$)).subscribe(() => {
-      this.theChat.forEach((msg) => (msg.isRead = true));
+    this.socketService.listen('messagesRead').pipe(takeUntil(this.destroy$)).subscribe((data: any) => {
+      const currentChatId = this.resolveCurrentChatId();
+      if (data?.chatId && currentChatId && data.chatId !== currentChatId) return;
+      const messageIds = new Set<string>((data?.messageIds || []).map((id: any) => String(id)));
+      const readerId = String(data?.readerId || '');
+      this.theChat = this.theChat.map((msg: any) => {
+        const shouldMark = messageIds.size
+          ? messageIds.has(String(msg?._id))
+          : String(this.idOf(msg?.sendTo) || '') === String(readerId) && String(this.idOf(msg?.sendBy) || '') === String(this.userData?._id);
+        return shouldMark ? { ...msg, isRead: true } : msg;
+      });
+      const chat = this.myChats.find((item) => item?._id === data?.chatId);
+      if (chat?.lastMessage && messageIds.has(String(chat.lastMessage._id))) {
+        chat.lastMessage = { ...chat.lastMessage, isRead: true };
+      }
     });
 
     this.socketService.listen('messageUpdated').pipe(takeUntil(this.destroy$)).subscribe((data: any) => {
@@ -225,8 +271,20 @@ activeList: any[] = [];
     });
 
     this.socketService.listen('presenceChanged').pipe(takeUntil(this.destroy$)).subscribe((data: any) => {
-      this.applyPresenceChange(data?.userId, !!data?.isOnline);
+      this.applyPresenceChange(data?.userId, !!data?.isOnline, data?.lastSeenAt);
     });
+
+    this.socketService.listen('typing:start').pipe(takeUntil(this.destroy$)).subscribe((data: any) => {
+      if (data?.chatId === this.resolveCurrentChatId() || data?.userId === this.theOpenedChatId?._id) this.isFriendTyping = true;
+    });
+
+    this.socketService.listen('typing:stop').pipe(takeUntil(this.destroy$)).subscribe((data: any) => {
+      if (data?.chatId === this.resolveCurrentChatId() || data?.userId === this.theOpenedChatId?._id) this.isFriendTyping = false;
+    });
+
+    this.socketService.listen('messageReactionChanged').pipe(takeUntil(this.destroy$)).subscribe((data: any) => this.applyRealtimeMessage(data?.message));
+    this.socketService.listen('messagePinChanged').pipe(takeUntil(this.destroy$)).subscribe((data: any) => this.applyMessagePinChange(data));
+    this.socketService.connectionState$.pipe(takeUntil(this.destroy$)).subscribe((state) => { this.connectionState = state; });
 
     this.socketService.listen('messageStarChanged').pipe(takeUntil(this.destroy$)).subscribe((data: any) => {
       this.applyStarChanged(data);
@@ -278,7 +336,7 @@ activeList: any[] = [];
 
       if (isCurrentChat) {
         if (!alreadyVisible) {
-          this.upsertMessage(incomingMessage, true);
+          this.upsertMessage(incomingMessage, !isFromCurrentUser);
         }
         newChat.unreadCount = 0;
         this.markAsRead(chatId);
@@ -289,11 +347,11 @@ activeList: any[] = [];
 
       if (isCurrentChat) {
         if (!alreadyVisible) {
-          this.upsertMessage(incomingMessage, true);
+          this.upsertMessage(incomingMessage, !isFromCurrentUser);
         }
         chat.unreadCount = 0;
         this.markAsRead(chatId);
-      } else if (!isFromCurrentUser) {
+      } else if (!isFromCurrentUser && !this.chatMuted) {
         chat.unreadCount = (chat.unreadCount || 0) + 1;
       }
 
@@ -356,9 +414,10 @@ activeList: any[] = [];
       })
       .filter((chat: any) => !!chat?.participants?.[0]?._id)
       .sort(
-        (a: any, b: any) =>
-          this.messageTimestamp(b?.lastMessage) -
-          this.messageTimestamp(a?.lastMessage)
+        (a: any, b: any) => {
+          if (!!a?.isPinned !== !!b?.isPinned) return a?.isPinned ? -1 : 1;
+          return this.messageTimestamp(b?.lastMessage) - this.messageTimestamp(a?.lastMessage);
+        }
       );
 
     if (this.theOpenedChatId?._id) {
@@ -442,8 +501,13 @@ activeList: any[] = [];
             showDivider: this.shouldShowDateDividerOnce(index, arr),
           })
         );
+        this.nextMessagesCursor = res?.pagination?.nextCursor || null;
+        this.hasMoreMessages = !!res?.pagination?.hasMore;
+        this.isLoadingOlder = false;
+        this.pinnedMessages = [];
 
         if (chatData?._id) {
+          this.loadPinnedMessages(chatData._id);
           setTimeout(() => this.scrollToBottom(true), 0);
           this.markAsRead(chatData._id);
           this.markMessagesAsRead();
@@ -509,6 +573,25 @@ activeList: any[] = [];
       return;
     }
 
+    if (notification.type === 'story_view' || notification.type === 'story_reaction') {
+      const storyId = notification.data?.storyId;
+      const groupIndex = storyId ? this.stories.findIndex((group: any) =>
+        group?.stories?.some((story: any) => story?._id === storyId)
+      ) : -1;
+      if (groupIndex >= 0) {
+        const itemIndex = this.stories[groupIndex].stories.findIndex((story: any) => story?._id === storyId);
+        this.storyGroupIndex = groupIndex;
+        this.storyItemIndex = Math.max(itemIndex, 0);
+        this.storyViewerOpen = true;
+        this.startStoryProgress();
+      }
+      return;
+    }
+
+    if (notification.type === 'call_incoming') {
+      return;
+    }
+
     if (
       notification.type?.startsWith('friend_request') ||
       notification.type === 'friend_removed'
@@ -525,19 +608,21 @@ activeList: any[] = [];
     this.openChatByFriend(friend);
   }
 
-  private applyPresenceChange(userId: string | undefined, isOnline: boolean): void {
+  private applyPresenceChange(userId: string | undefined, isOnline: boolean, lastSeenAt?: string): void {
     if (!userId) return;
 
     this.myChats.forEach((chat) => {
       const participant = chat?.participants?.[0];
       if (participant?._id === userId) {
         participant.isOnline = isOnline;
+        participant.lastSeenAt = lastSeenAt || participant.lastSeenAt;
       }
     });
 
     this.userData?.friends?.forEach((friend: any) => {
       if (friend?._id === userId) {
         friend.isOnline = isOnline;
+        friend.lastSeenAt = lastSeenAt || friend.lastSeenAt;
       }
     });
 
@@ -596,6 +681,7 @@ activeList: any[] = [];
     this.actionError = '';
     this.isLoadingChat = false;
     this.emojiOpen = false;
+    this.stopTyping();
     this.searchTerm = '';
     this.filteredFriends = [];
     this.activeList = this.myChats;
@@ -699,13 +785,53 @@ activeList: any[] = [];
   // 📸 Stories
   loadStories(): void {
     this.storyService.getStories().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (response: any) => { this.stories = Array.isArray(response?.stories) ? response.stories : []; },
-      error: () => { this.stories = []; },
+      next: (response: any) => {
+        const loadedStories = Array.isArray(response?.stories) ? response.stories : [];
+        const myId = String(this.userData?._id || '');
+        const openStoryId = this.storyViewerOpen ? String(this.currentStory?._id || '') : '';
+
+        // Keep my story group at the far left; friend stories follow it.
+        const ownIndex = loadedStories.findIndex(
+          (group: any) => String(group?.user?._id || '') === myId
+        );
+
+        this.stories = ownIndex >= 0
+          ? [loadedStories[ownIndex], ...loadedStories.filter((_: any, index: number) => index !== ownIndex)]
+          : loadedStories;
+
+        if (this.storyViewerOpen && openStoryId) {
+          const currentStoryId = openStoryId;
+          const newGroupIndex = this.stories.findIndex((group: any) =>
+            group?.stories?.some((story: any) => String(story?._id) === currentStoryId)
+          );
+
+          if (newGroupIndex >= 0) {
+            this.storyGroupIndex = newGroupIndex;
+            this.storyItemIndex = this.stories[newGroupIndex].stories.findIndex(
+              (story: any) => String(story?._id) === currentStoryId
+            );
+          }
+        }
+
+        if (this.storyGroupIndex >= this.stories.length) {
+          this.storyGroupIndex = Math.max(this.stories.length - 1, 0);
+          this.storyItemIndex = 0;
+        }
+      },
+      error: () => {
+        this.stories = [];
+        this.storyViewersOpen = false;
+      },
     });
   }
 
   get currentStoryGroup(): any { return this.stories[this.storyGroupIndex] || null; }
   get currentStory(): any { return this.currentStoryGroup?.stories?.[this.storyItemIndex] || null; }
+
+  get ownStoryGroup(): any {
+    const myId = String(this.userData?._id || '');
+    return this.stories.find((group: any) => String(group?.user?._id || '') === myId) || null;
+  }
 
   openStoryComposer(): void {
     this.storyComposerOpen = true;
@@ -820,50 +946,165 @@ activeList: any[] = [];
   openStoryGroup(groupIndex: number): void {
     const group = this.stories[groupIndex];
     if (!group?.stories?.length) return;
+
     const firstUnviewed = group.stories.findIndex((story: any) => !story.isViewed);
     this.storyGroupIndex = groupIndex;
     this.storyItemIndex = firstUnviewed >= 0 ? firstUnviewed : 0;
     this.storyViewerOpen = true;
+    this.storyViewersOpen = false;
+    this.storyPaused = false;
     this.markCurrentStoryViewed();
+    this.startStoryProgress();
   }
 
-  closeStoryViewer(): void { this.storyViewerOpen = false; }
+  openOwnStoryOrComposer(): void {
+    const ownStory = this.ownStoryGroup;
+    if (!ownStory?.stories?.length) {
+      this.openStoryComposer();
+      return;
+    }
+
+    const index = this.stories.findIndex(
+      (group: any) => String(group?.user?._id || '') === String(this.userData?._id || '')
+    );
+
+    if (index >= 0) this.openStoryGroup(index);
+  }
+
+  closeStoryViewer(): void {
+    this.storyViewerOpen = false;
+    this.storyViewersOpen = false;
+    this.stopStoryProgress();
+    this.storyPaused = false;
+  }
+
+  reactToCurrentStory(emoji: string): void {
+    const story = this.currentStory;
+    if (!story?._id || !emoji) return;
+
+    this.storyService.reactToStory(story._id, emoji).pipe(take(1)).subscribe({
+      next: (response: any) => {
+        story.reactionCounts = response?.reactionCounts || {};
+        story.myReaction = response?.myReaction || null;
+      },
+      error: (error) => this.storyError = error?.error?.message || 'Unable to react to this story.'
+    });
+  }
+
+  toggleStoryViewers(): void {
+    if (this.currentStoryGroup?.user?._id !== this.userData?._id) return;
+    if (!this.currentStory?._id) return;
+    this.storyViewersOpen = !this.storyViewersOpen;
+  }
+
+  get currentStoryViewers(): any[] {
+    const story = this.currentStory;
+    const isOwnStory =
+      String(this.currentStoryGroup?.user?._id || '') === String(this.userData?._id || '');
+
+    if (!story || !isOwnStory) return [];
+    return Array.isArray(story.viewerDetails) ? story.viewerDetails : [];
+  }
+
+  formatStoryViewerReaction(reaction: string | null): string {
+    return reaction || 'Viewed without reaction';
+  }
 
   nextStory(): void {
     const group = this.currentStoryGroup;
     if (!group) return;
+
+    this.storyViewersOpen = false;
+
     if (this.storyItemIndex < group.stories.length - 1) {
       this.storyItemIndex++;
       this.markCurrentStoryViewed();
+      this.startStoryProgress();
       return;
     }
     if (this.storyGroupIndex < this.stories.length - 1) {
       this.storyGroupIndex++;
       this.storyItemIndex = 0;
       this.markCurrentStoryViewed();
+      this.startStoryProgress();
       return;
     }
     this.closeStoryViewer();
   }
 
   previousStory(): void {
+    this.storyViewersOpen = false;
+
     if (this.storyItemIndex > 0) {
       this.storyItemIndex--;
       this.markCurrentStoryViewed();
+      this.startStoryProgress();
       return;
     }
     if (this.storyGroupIndex > 0) {
       this.storyGroupIndex--;
       this.storyItemIndex = Math.max((this.currentStoryGroup?.stories?.length || 1) - 1, 0);
       this.markCurrentStoryViewed();
+      this.startStoryProgress();
     }
+  }
+
+  private startStoryProgress(duration = 30000): void {
+    this.stopStoryProgress();
+    this.storyProgressDuration = Math.max(1000, duration);
+    this.storyProgress = 0;
+    this.storyProgressElapsed = 0;
+    this.storyProgressLastTick = performance.now();
+    this.storyProgressTimer = setInterval(() => {
+      if (!this.storyViewerOpen) return;
+      const now = performance.now();
+      if (!this.storyPaused) this.storyProgressElapsed += Math.max(0, now - this.storyProgressLastTick);
+      this.storyProgressLastTick = now;
+      this.storyProgress = Math.min(100, (this.storyProgressElapsed / this.storyProgressDuration) * 100);
+      if (this.storyProgress >= 100 && this.currentStory?.mediaType === 'image') this.nextStory();
+    }, 50);
+  }
+
+  private stopStoryProgress(): void {
+    if (this.storyProgressTimer) clearInterval(this.storyProgressTimer);
+    this.storyProgressTimer = null;
+    this.storyProgress = 0;
+    this.storyProgressElapsed = 0;
+    this.storyProgressLastTick = 0;
+  }
+
+  startVideoStoryProgress(event: Event): void {
+    const video = event.target as HTMLVideoElement;
+    const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration * 1000 : 5000;
+    this.startStoryProgress(duration);
+  }
+
+  holdStory(pause: boolean): void {
+    this.storyPaused = pause;
+    const video = document.querySelector('.story-media-area video') as HTMLVideoElement | null;
+    if (video) pause ? video.pause() : video.play().catch(() => {});
   }
 
   private markCurrentStoryViewed(): void {
     const story = this.currentStory;
     if (!story?._id) return;
+
     story.isViewed = true;
-    this.storyService.viewStory(story._id).pipe(take(1)).subscribe({ error: () => {} });
+
+    const isOwnStory =
+      String(this.currentStoryGroup?.user?._id || story?.owner?._id || '') ===
+      String(this.userData?._id || '');
+
+    // Opening your own story must never create a viewer entry for yourself.
+    if (!isOwnStory) {
+      this.storyService.viewStory(story._id).pipe(take(1)).subscribe({
+        next: (response: any) => {
+          if (response?.viewerCount !== undefined) story.viewerCount = response.viewerCount;
+        },
+        error: () => {},
+      });
+    }
+
     const group = this.currentStoryGroup;
     if (group) group.hasUnviewed = group.stories.some((item: any) => !item.isViewed);
   }
@@ -1182,18 +1423,26 @@ activeList: any[] = [];
     this.pendingMessageId = null;
   }
 
-  private focusMessage(messageId?: string): void {
+  private focusMessage(messageId?: string, attempt = 0): void {
     if (!messageId) return;
     setTimeout(() => {
       const node = this.chatContainer?.nativeElement?.querySelector(
         `[data-message-id="${messageId}"]`
       ) as HTMLElement | null;
 
-      if (!node) return;
-      node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      node.classList.add('focus-message');
-      setTimeout(() => node.classList.remove('focus-message'), 1800);
-    }, 180);
+      if (node) {
+        node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        node.classList.add('focus-message');
+        setTimeout(() => node.classList.remove('focus-message'), 1800);
+        return;
+      }
+
+      // Stars, search results and replies can reference a message older than
+      // the first page. Keep loading older pages until the target is found.
+      if (this.hasMoreMessages && !this.isLoadingOlder && attempt < 25) {
+        this.loadOlderMessages(() => this.focusMessage(messageId, attempt + 1));
+      }
+    }, attempt === 0 ? 180 : 20);
   }
 
   toggleChatBackgroundPicker(): void {
@@ -1252,6 +1501,7 @@ setChatBackground(value: string): void {
     this.isSendingMessage = true;
     this.actionError = '';
     this.emojiOpen = false;
+    this.stopTyping();
     if (this.isRecording) this.stopRecording();
 
     const formData = new FormData();
@@ -1264,12 +1514,22 @@ setChatBackground(value: string): void {
       new Date().toLocaleTimeString('en-US', { hour12: false })
     );
     if (this.selectedFile) formData.append('file', this.selectedFile);
+    if (this.replyToMessage?._id) formData.append('replyTo', this.replyToMessage._id);
 
-    this.userService.initChat(formData).subscribe({
-      next: (res: any) => {
+    this.mediaUploadProgress = this.selectedFile ? 0 : null;
+    this.userService.initChatWithProgress(formData).subscribe({
+      next: (event: any) => {
+        if (event?.type === HttpEventType.UploadProgress) {
+          this.mediaUploadProgress = event.total ? Math.round((event.loaded / event.total) * 100) : null;
+          return;
+        }
+        if (event?.type !== HttpEventType.Response) return;
+        const res = event.body;
       this.isSendingMessage = false;
       this.cancelPreview();
       this.message = '';
+      this.replyToMessage = null;
+      this.mediaUploadProgress = null;
 
       const newMsg = res.message;
       if (typeof newMsg.sendBy === 'string')
@@ -1277,12 +1537,13 @@ setChatBackground(value: string): void {
       if (typeof newMsg.sendTo === 'string')
         newMsg.sendTo = { _id: newMsg.sendTo };
 
-      this.upsertMessage(newMsg, true);
+      this.upsertMessage({ ...newMsg, isRead: false }, false);
       this.updateConversationPreview(newMsg);
       setTimeout(() => this.scrollToBottom(true), 0);
       },
       error: () => {
         this.isSendingMessage = false;
+        this.mediaUploadProgress = null;
         this.actionError = 'Message could not be sent. Please try again.';
       },
     });
@@ -1290,7 +1551,7 @@ setChatBackground(value: string): void {
 
 
   // Message actions
-  onMessageAction(event: { type: 'edit' | 'delete' | 'star' | 'unstar'; message: any }): void {
+  onMessageAction(event: { type: 'edit' | 'delete' | 'star' | 'unstar' | 'reply' | 'focusReply' | 'react' | 'pin' | 'unpin'; message: any; emoji?: string }): void {
     const messageId = event.message?._id;
     if (!messageId) return;
 
@@ -1309,6 +1570,36 @@ setChatBackground(value: string): void {
         error: (error) => {
           this.actionError = error?.error?.message || 'Unable to update the starred state.';
         },
+      });
+      return;
+    }
+
+    if (event.type === 'reply') {
+      this.replyToMessage = event.message;
+      this.emojiOpen = false;
+      setTimeout(() => this.focusComposerInput(), 0);
+      return;
+    }
+
+    if (event.type === 'focusReply') {
+      const targetId = event.message?.replyTo?._id || event.message?.replyTo;
+      this.focusMessage(targetId);
+      return;
+    }
+
+    if (event.type === 'react') {
+      if (!event.emoji) return;
+      this.socialFeaturesService.toggleReaction(messageId, event.emoji).subscribe({
+        next: (response: any) => this.applyRealtimeMessage(response?.message),
+        error: (error) => this.actionError = error?.error?.message || 'Unable to update reaction.'
+      });
+      return;
+    }
+
+    if (event.type === 'pin' || event.type === 'unpin') {
+      this.socialFeaturesService.toggleMessagePin(messageId).subscribe({
+        next: (response: any) => this.applyMessagePinChange(response),
+        error: (error) => this.actionError = error?.error?.message || 'Unable to update pinned message.'
       });
       return;
     }
@@ -1345,14 +1636,201 @@ setChatBackground(value: string): void {
     const isForCurrentUser = !data.userId || data.userId === this.userData?._id;
     if (!isForCurrentUser) return;
 
-    const update = (message: any) => {
-      if (message?._id === data.messageId) {
-        message.isStarred = !!data.isStarred;
-      }
-    };
+    this.theChat = this.theChat.map((message) =>
+      message?._id === data.messageId
+        ? { ...message, isStarred: !!data.isStarred }
+        : message
+    );
+    this.myChats = this.myChats.map((chat) => ({
+      ...chat,
+      lastMessage:
+        chat?.lastMessage?._id === data.messageId
+          ? { ...chat.lastMessage, isStarred: !!data.isStarred }
+          : chat?.lastMessage,
+    }));
+    this.activeList = this.searchTerm?.trim() ? this.filteredFriends : this.myChats;
+  }
 
-    this.theChat.forEach(update);
-    this.myChats.forEach((chat) => update(chat?.lastMessage));
+  private applyRealtimeMessage(message: any): void {
+    if (!message?._id) return;
+    const index = this.theChat.findIndex((item) => item?._id === message._id);
+    if (index === -1) return;
+    this.theChat[index] = { ...this.theChat[index], ...message };
+  }
+
+  private applyMessagePinChange(data: any): void {
+    if (!data?.messageId) return;
+    const updatedChat = this.theChat.map((item) =>
+      item?._id === data.messageId ? { ...item, isPinned: !!data.isPinned } : item
+    );
+    this.theChat = updatedChat;
+    const message = updatedChat.find((item) => item?._id === data.messageId);
+    if (data.isPinned) {
+      if (message && !this.pinnedMessages.some((item) => item?._id === message._id)) {
+        this.pinnedMessages = [message, ...this.pinnedMessages];
+      }
+    } else {
+      this.pinnedMessages = this.pinnedMessages.filter((item) => item?._id !== data.messageId);
+    }
+  }
+
+  setReply(message: any): void {
+    this.replyToMessage = message;
+    setTimeout(() => this.focusComposerInput(), 0);
+  }
+
+  cancelReply(): void {
+    this.replyToMessage = null;
+  }
+
+  onComposerKeydown(event: any): void {
+    const enterToSend = this.userData?.chatPreferences?.enterToSend !== false;
+    if (event.key !== 'Enter') return;
+    if (!enterToSend) {
+      event.preventDefault();
+      return;
+    }
+    if (event.shiftKey) return;
+    event.preventDefault();
+    this.sendMessage();
+  }
+
+  onComposerInput(): void {
+    this.typingInput$.next(this.message);
+  }
+
+  private emitTyping(): void {
+    if (!this.theOpenedChatId?._id || !this.resolveCurrentChatId()) return;
+    this.socketService.emit('typing:start', { toUserId: this.theOpenedChatId._id, chatId: this.resolveCurrentChatId() });
+    this.clearTypingTimer();
+    this.typingStopTimer = setTimeout(() => {
+      this.socketService.emit('typing:stop', { toUserId: this.theOpenedChatId?._id, chatId: this.resolveCurrentChatId() });
+    }, 1200);
+  }
+
+  private stopTyping(): void {
+    this.clearTypingTimer();
+    if (this.theOpenedChatId?._id && this.resolveCurrentChatId()) {
+      this.socketService.emit('typing:stop', { toUserId: this.theOpenedChatId._id, chatId: this.resolveCurrentChatId() });
+    }
+    this.isFriendTyping = false;
+  }
+
+  private clearTypingTimer(): void {
+    if (this.typingStopTimer) clearTimeout(this.typingStopTimer);
+    this.typingStopTimer = null;
+  }
+
+  private focusComposerInput(): void {
+    const node = document.querySelector('.chat-composer input[type="text"]') as HTMLInputElement | null;
+    node?.focus();
+  }
+
+  toggleMessageSearch(): void {
+    this.chatSearchOpen = !this.chatSearchOpen;
+    if (!this.chatSearchOpen) {
+      this.messageSearchQuery = '';
+      this.messageSearchResults = [];
+    }
+  }
+
+  onMessageSearchInput(value: string): void {
+    this.messageSearchQuery = value || '';
+    this.messageSearch$.next(this.messageSearchQuery.trim());
+  }
+
+  private performMessageSearch(query: string): void {
+    const chatId = this.resolveCurrentChatId();
+    if (!chatId || !query) { this.messageSearchResults = []; return; }
+    this.messageSearchLoading = true;
+    this.socialFeaturesService.searchMessages(chatId, query).pipe(take(1)).subscribe({
+      next: (response: any) => { this.messageSearchResults = response?.messages || []; this.messageSearchLoading = false; },
+      error: () => { this.messageSearchResults = []; this.messageSearchLoading = false; },
+    });
+  }
+
+  focusSearchResult(message: any): void {
+    this.chatSearchOpen = false;
+    this.focusMessage(message?._id);
+  }
+
+  loadPinnedMessages(chatId: string): void {
+    this.socialFeaturesService.getPinnedMessages(chatId).pipe(take(1)).subscribe({
+      next: (response: any) => this.pinnedMessages = response?.messages || [],
+      error: () => this.pinnedMessages = [],
+    });
+  }
+
+  togglePinnedPanel(): void { this.pinnedPanelOpen = !this.pinnedPanelOpen; }
+
+  focusPinnedMessage(message: any): void {
+    this.pinnedPanelOpen = false;
+    this.focusMessage(message?._id);
+  }
+
+  toggleCurrentChatPin(): void {
+    const chatId = this.resolveCurrentChatId();
+    if (!chatId) return;
+    this.socialFeaturesService.toggleChatPin(chatId).subscribe({
+      next: (response: any) => this.applyChatPreferenceToCurrent(response),
+    });
+  }
+
+  toggleCurrentChatMute(): void {
+    const chatId = this.resolveCurrentChatId();
+    if (!chatId) return;
+    this.socialFeaturesService.toggleChatMute(chatId).subscribe({
+      next: (response: any) => this.applyChatPreferenceToCurrent(response),
+    });
+  }
+
+  private applyChatPreferenceToCurrent(response: any): void {
+    const chatId = response?.chatId;
+    const chat = this.myChats.find((item) => item?._id === chatId);
+    if (!chat) return;
+    if (response.isPinned !== undefined) chat.isPinned = !!response.isPinned;
+    if (response.isMuted !== undefined) chat.isMuted = !!response.isMuted;
+  }
+
+  get currentChatRecord(): any {
+    const chatId = this.resolveCurrentChatId();
+    return this.myChats.find((item) => item?._id === chatId) || null;
+  }
+
+  get chatMuted(): boolean { return !!this.currentChatRecord?.isMuted; }
+  get chatPinned(): boolean { return !!this.currentChatRecord?.isPinned; }
+
+  onMessagesScroll(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (target.scrollTop < 90 && this.hasMoreMessages && !this.isLoadingOlder) this.loadOlderMessages();
+  }
+
+  private loadOlderMessages(onLoaded?: () => void): void {
+    const friendId = this.theOpenedChatId?._id;
+    if (!friendId || !this.nextMessagesCursor) {
+      onLoaded?.();
+      return;
+    }
+    this.isLoadingOlder = true;
+    const previousHeight = this.chatContainer?.nativeElement?.scrollHeight || 0;
+    this.userService.getChat({ myId: this.userData._id, friendId, before: this.nextMessagesCursor, limit: 50 }).pipe(take(1)).subscribe({
+      next: (res: any) => {
+        const older = (res?.chat?.chat?.messages || []).map((msg: any, index: number, arr: any[]) => ({ ...msg, showDivider: this.shouldShowDateDividerOnce(index, arr) }));
+        this.theChat = [...older, ...this.theChat];
+        this.nextMessagesCursor = res?.pagination?.nextCursor || null;
+        this.hasMoreMessages = !!res?.pagination?.hasMore;
+        this.isLoadingOlder = false;
+        setTimeout(() => {
+          const nextHeight = this.chatContainer?.nativeElement?.scrollHeight || previousHeight;
+          this.chatContainer.nativeElement.scrollTop = Math.max(0, nextHeight - previousHeight);
+          onLoaded?.();
+        }, 0);
+      },
+      error: () => {
+        this.isLoadingOlder = false;
+        onLoaded?.();
+      },
+    });
   }
 
   saveEditedMessage(): void {
@@ -1429,6 +1907,10 @@ setChatBackground(value: string): void {
     }
     if (this.mediaViewer.open) {
       this.closeMediaViewer();
+      return;
+    }
+    if (this.storyViewersOpen) {
+      this.storyViewersOpen = false;
       return;
     }
     if (this.storyViewerOpen) {
@@ -1550,6 +2032,13 @@ setChatBackground(value: string): void {
             ...msg,
             showDivider: this.shouldShowDateDividerOnce(index, arr),
           }));
+          this.nextMessagesCursor = res?.pagination?.nextCursor || null;
+          this.hasMoreMessages = !!res?.pagination?.hasMore;
+          this.isLoadingOlder = false;
+          this.pinnedMessages = [];
+          if (chatData?._id) {
+            this.loadPinnedMessages(chatData._id);
+          }
 
           this.chat = '';
           this.friend = 'friend';
@@ -1575,6 +2064,33 @@ setChatBackground(value: string): void {
       });
   }
 
+  private compressImageIfNeeded(file: File): Promise<File> {
+    if (!file.type.startsWith('image/') || file.type === 'image/gif' || file.size <= 1.5 * 1024 * 1024) return Promise.resolve(file);
+    return new Promise((resolve) => {
+      const image = new Image();
+      const url = URL.createObjectURL(file);
+      image.onload = () => {
+        try {
+          const maxSide = 2000;
+          const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { URL.revokeObjectURL(url); resolve(file); return; }
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((blob) => {
+            URL.revokeObjectURL(url);
+            if (!blob || blob.size >= file.size) { resolve(file); return; }
+            resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp', lastModified: Date.now() }));
+          }, 'image/webp', 0.84);
+        } catch { URL.revokeObjectURL(url); resolve(file); }
+      };
+      image.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      image.src = url;
+    });
+  }
+
   // 📎 Handle file selection (image / video / pdf)
   async onFileSelected(event: Event): Promise<void> {
     // Read the newly selected file BEFORE resetting the previous preview.
@@ -1587,13 +2103,15 @@ setChatBackground(value: string): void {
     this.clearAttachmentPreview(false);
     this.fileError = '';
 
-    if (file.size > 50 * 1024 * 1024) {
+    const preparedFile = await this.compressImageIfNeeded(file);
+
+    if (preparedFile.size > 50 * 1024 * 1024) {
       this.fileError = 'Files must be 50 MB or smaller.';
       if (input) input.value = '';
       return;
     }
 
-    const type = file.type;
+    const type = preparedFile.type;
     const supported =
       type.startsWith('image/') ||
       type.startsWith('video/') ||
@@ -1606,10 +2124,10 @@ setChatBackground(value: string): void {
       return;
     }
 
-    this.selectedFile = file;
-    this.fileName = file.name;
+    this.selectedFile = preparedFile;
+    this.fileName = preparedFile.name;
 
-    const blobUrl = URL.createObjectURL(file);
+    const blobUrl = URL.createObjectURL(preparedFile);
     this.videoBlobUrl = blobUrl;
     const safeBlob = this.sanitizer.bypassSecurityTrustUrl(blobUrl);
 
@@ -1631,7 +2149,7 @@ setChatBackground(value: string): void {
       return;
     }
 
-    await this.handleVideoFile(file, blobUrl, safeBlob);
+    await this.handleVideoFile(preparedFile, blobUrl, safeBlob);
   }
 
   // 🎥 Handle video logic

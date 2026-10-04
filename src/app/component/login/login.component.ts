@@ -18,7 +18,7 @@ export class LoginComponent {
 
   // بيانات الحساب التجريبي — غيّرها لتطابق الحساب الموجود في قاعدة البيانات.
   readonly demoAccount = {
-    emailOrPhone: 'user@gmail.com',
+    emailOrPhone: 'demo@chatapp.dev',
     password: '123456',
   };
 

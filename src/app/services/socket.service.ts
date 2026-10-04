@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, ReplaySubject, switchMap } from 'rxjs';
+import { Observable, ReplaySubject, Subject, switchMap } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
 import { environment } from 'src/environments/environment';
 
@@ -9,6 +9,8 @@ import { environment } from 'src/environments/environment';
 export class SocketService {
   public socket?: Socket;
   private readonly socketSubject = new ReplaySubject<Socket>(1);
+  private readonly connectionStateSubject = new Subject<'online' | 'offline' | 'reconnecting'>();
+  readonly connectionState$ = this.connectionStateSubject.asObservable();
   private readonly socketUrl = environment.socketUrl;
 
   connect(_userId?: string): void {
@@ -31,14 +33,19 @@ export class SocketService {
 
     this.socket.on('connect', () => {
       console.info('[Socket] connected', this.socket?.id);
+      this.connectionStateSubject.next('online');
+      this.socket?.emit('join');
     });
 
     this.socket.on('connect_error', (error) => {
       console.error('[Socket] connect_error', error?.message || error);
+      this.connectionStateSubject.next('reconnecting');
     });
 
+    this.socket.on('reconnect_attempt', () => this.connectionStateSubject.next('reconnecting'));
     this.socket.on('disconnect', (reason) => {
       console.warn('[Socket] disconnected', reason);
+      this.connectionStateSubject.next(reason === 'io client disconnect' ? 'offline' : 'reconnecting');
     });
 
     this.socketSubject.next(this.socket);

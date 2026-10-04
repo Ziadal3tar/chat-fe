@@ -19,16 +19,7 @@ import { AppComponent } from './app.component';
 import { LoginComponent } from './component/login/login.component';
 import { SignupComponent } from './component/signup/signup.component';
 import { HomeComponent } from './component/home/home.component';
-import { FriendsComponent } from './component/friends/friends.component';
 import { TestComponent } from './component/test/test.component';
-import { SettingComponent } from './component/setting/setting.component';
-import { SearchComponent } from './component/search/search.component';
-import { AllSettingComponent } from './component/all-setting/all-setting.component';
-import { FriendComponent } from './component/friend/friend.component';
-import { StarsComponent } from './component/stars/stars.component';
-import { PlansComponent } from './component/plans/plans.component';
-import { ProfileComponent } from './component/profile/profile.component';
-import { AddFriendComponent } from './component/add-friend/add-friend.component';
 import { ConversationItemComponent } from './component/home/conversation-item/conversation-item.component';
 import { MessageBubbleComponent } from './component/home/message-bubble/message-bubble.component';
 import { UserProfileComponent } from './component/home/user-profile/user-profile.component';
@@ -41,16 +32,7 @@ import { MessageTimePipe } from './pipes/pipes/message-time.pipe';
     LoginComponent,
     SignupComponent,
     HomeComponent,
-    FriendsComponent,
     TestComponent,
-    SettingComponent,
-    SearchComponent,
-    AllSettingComponent,
-    FriendComponent,
-    StarsComponent,
-    PlansComponent,
-    ProfileComponent,
-    AddFriendComponent,
     ConversationItemComponent,
     MessageBubbleComponent,
     UserProfileComponent,

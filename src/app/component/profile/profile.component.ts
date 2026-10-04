@@ -110,6 +110,7 @@ export class ProfileComponent implements OnInit {
         const nextUser = response?.user;
         if (nextUser) {
           this.userData = { ...this.userData, ...nextUser };
+          this.userService.updateUser(nextUser);
         }
 
         this.isEditing = false;

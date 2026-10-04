@@ -39,14 +39,14 @@
 
 .profile-close:hover {
   background: #fff;
-  color: #4f46e5;
+  color: #3eab90 ;
   transform: rotate(3deg);
 }
 
 .profile-cover {
   position: relative;
   height: 145px;
-  background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, .28), transparent 30%), linear-gradient(135deg, #312e81, #4f46e5 48%, #0891b2);
+  background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, .28), transparent 30%), linear-gradient(135deg, #312e81, #3eab90  48%, #0891b2);
 }
 
 .profile-cover-label {
@@ -223,7 +223,7 @@
 
 .profile-primary-btn {
   border: 0;
-  background: #4f46e5;
+  background: #3eab90 ;
   color: #fff;
   box-shadow: 0 8px 18px rgba(79, 70, 229, .2);
 }

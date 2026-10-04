@@ -41,7 +41,7 @@
 }
 
 .message-own {
-  background: #3267e8;
+  background: #3eab90;
   color: #fff;
   border-bottom-right-radius: 5px;
 }
@@ -105,7 +105,7 @@
 }
 
 .pdf-info a {
-  color: #3267e8;
+  color: #3eab90;
   text-decoration: none;
   font-size: .7rem;
 }
@@ -125,14 +125,14 @@
 }
 
 .read-icon {
-  color: #3267e8;
+  color: #3eab90;
 }
 
 .message-actions {
   position: absolute;
   top: 5px;
   right: -25px;
-  z-index: 5;
+  z-index: 1;
 }
 
 .message-row-other .message-actions {
@@ -210,7 +210,7 @@
 }
 
 .message-sender-profile:hover {
-  color: #4f46e5;
+  color: #3eab90 ;
 }
 
 .message-wrapper-deleted {
@@ -240,7 +240,7 @@
   position: absolute;
   top: 0;
   right: -34px;
-  z-index: 10;
+  z-index: 1;
   opacity: 0;
   transition: opacity .16s ease;
 }
@@ -321,7 +321,7 @@
 }
 
 .audio-message i {
-  color: #4f46e5;
+  color: #3eab90 ;
 }
 
 .audio-message audio {
@@ -352,3 +352,65 @@
 .message-row-other .message-actions {
   display: block;
 }
+
+.reply-preview { margin-bottom:6px; padding:7px 9px; border-left:3px solid #6366f1; border-radius:7px; background:rgba(99,102,241,.07); }
+.reply-preview span { display:block; color:#3eab90 ; font-size:9px; font-weight:800; }
+.reply-preview p { margin:2px 0 0; color:#64748b; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.message-reactions { display:flex; gap:4px; margin-top:4px; flex-wrap:wrap; }
+.message-reactions button { border:1px solid #e2e8f0; border-radius:999px; padding:3px 7px; background:#fff; color:#475569; font-size:10px; cursor:pointer; }
+.message-reactions button.mine { border-color:#8daeff; background:#eef2ff; }
+.reaction-row { display:flex; gap:3px; padding:6px 4px 3px; border-top:1px solid #eef2f6; margin-top:4px; }
+.reaction-choice { width:30px !important; padding:5px 0 !important; justify-content:center !important; font-size:14px !important; }
+.message-wrapper { max-width:min(74%,620px); }
+@media (max-width:700px){ .message-wrapper { max-width:88%; } .audio-message { width:min(250px,100%); } }
+
+
+.premium-voice { width:min(280px,100%); background:linear-gradient(135deg,#f7f8ff,#f2f5ff); }
+.voice-play { width:36px; height:36px; flex:0 0 36px; border:0; border-radius:50%; background:linear-gradient(135deg,#3eab90 ,#3eab90); color:#fff; display:grid; place-items:center; }
+.voice-track-wrap { min-width:0; flex:1; }
+.voice-wave { height:26px; display:flex; align-items:center; gap:3px; cursor:pointer; }
+.voice-wave span { width:4px; height:8px; border-radius:99px; background:#cbd5e1; transition:.12s ease; }
+.voice-wave span:nth-child(2n){height:14px}.voice-wave span:nth-child(3n){height:20px}.voice-wave span:nth-child(5n){height:11px}
+.voice-wave span.active { background:#3eab90 ; }
+.voice-meta { display:flex; justify-content:space-between; align-items:center; color:#94a3b8; font-size:9px; }
+.premium-voice audio { display:none; }
+
+
+.media-download-placeholder {
+  min-width: 220px;
+  min-height: 120px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f4f6ff, #eef7ff);
+  color: #64748b;
+}
+.media-download-placeholder i { color: #3eab90 ; font-size: 24px; }
+.media-download-placeholder strong { font-size: 12px; color: #334155; }
+.media-download-placeholder small { font-size: 9px; color: #94a3b8; }
+.voice-load-btn {
+  min-height: 42px;
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  background: #eef2ff;
+  color: #3eab90 ;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.dark-theme .media-download-placeholder, .dark-theme .voice-load-btn { background:#1f2937; color:#c7d2fe; }
+
+
+.reply-preview { position:relative; width:100%; display:block; padding:8px 28px 8px 10px; margin:0 0 7px; border:0; border-left:3px solid rgba(79,70,229,.75); border-radius:9px; background:rgba(79,70,229,.07); color:inherit; text-align:left; cursor:pointer; }
+.reply-preview span { display:block; font-size:10px; font-weight:800; color:#3eab90 ; }
+.reply-preview p { margin:3px 0 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; opacity:.78; }
+.reply-preview > i { position:absolute; right:9px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:9px; }
+.reply-preview:hover { background:rgba(79,70,229,.11); }

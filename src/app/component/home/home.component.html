@@ -1,4 +1,8 @@
 <div class="messenger-shell">
+  <div *ngIf="connectionState !== 'online'" class="connection-banner" [class.offline]="connectionState === 'offline'">
+    <i class="fa-solid" [ngClass]="connectionState === 'offline' ? 'fa-wifi-slash' : 'fa-rotate' "></i>
+    {{ connectionState === 'offline' ? 'You are offline. Messages will resume when connection returns.' : 'Reconnecting…' }}
+  </div>
   <div *ngIf="planNotice" class="plan-live-toast" role="status">
     <span class="plan-live-icon"><i class="fa-solid fa-bolt"></i></span>
     <span>{{ planNotice }}</span>
@@ -15,13 +19,45 @@
     <section [ngClass]="chat" class="chat-panel" [attr.data-chat-bg]="chatBackground">
 
       <!-- Empty chat state -->
-      <div class="chat-empty-state" [ngClass]="{ 'is-hidden': chatItem != 'd-none' }">
-        <div class="empty-illustration">
-          <img src="./assets/img/Chatting-rafiki.svg" alt="Start chatting">
-        </div>
-        <h2>Start a conversation</h2>
-        <p>Select a friend from your conversations and start chatting.</p>
-      </div>
+     <div class="chat-empty-state" [ngClass]="{ 'is-hidden': chatItem != 'd-none' }">
+
+  <div class="empty-content">
+
+    <div class="empty-illustration">
+      <div class="illustration-glow"></div>
+
+     
+    </div>
+
+    <div class="empty-text">
+      <span class="empty-badge">
+        <i class="fa-regular fa-comments"></i>
+        Your conversations
+      </span>
+
+      <h2>
+        Start a conversation
+      </h2>
+
+      <p>
+        Select a friend from your conversations and start chatting.
+        Your messages will appear here.
+      </p>
+    </div>
+
+    <div class="empty-hint">
+      <span class="hint-icon">
+        <i class="fa-solid fa-paper-plane"></i>
+      </span>
+
+      <span>
+        Choose someone and send your first message
+      </span>
+    </div>
+
+  </div>
+
+</div>
 
       <div *ngIf="isLoadingChat" class="chat-loading-state" aria-live="polite">
         <div class="loading-spinner"></div>
@@ -46,7 +82,9 @@
 
           <div class="chat-user-info">
             <h2>{{ nameChat }}</h2>
-            <span [class.online-presence]="theOpenedChatId?.isOnline">{{ chatPresenceLabel }}</span>
+            <span [class.online-presence]="theOpenedChatId?.isOnline">
+              {{ isFriendTyping ? 'typing…' : chatPresenceLabel }}
+            </span>
           </div>
         </div>
 
@@ -56,6 +94,12 @@
           </button>
           <button type="button" class="header-icon-btn" title="Video call" aria-label="Video call" (click)="startCall('video')">
             <i class="fa-solid fa-video"></i>
+          </button>
+          <button type="button" class="header-icon-btn" title="Search messages" aria-label="Search messages" (click)="toggleMessageSearch()">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+          <button type="button" class="header-icon-btn" title="Pinned messages" aria-label="Pinned messages" (click)="togglePinnedPanel()">
+            <i class="fa-solid fa-thumbtack"></i>
           </button>
 
           <div ngbDropdown>
@@ -71,6 +115,14 @@
                 <i class="fa-solid fa-palette"></i>
                 Chat background
               </button>
+              <button ngbDropdownItem type="button" (click)="toggleCurrentChatPin()">
+                <i class="fa-solid fa-thumbtack"></i>
+                {{ chatPinned ? 'Unpin chat' : 'Pin chat' }}
+              </button>
+              <button ngbDropdownItem type="button" (click)="toggleCurrentChatMute()">
+                <i class="fa-solid" [ngClass]="chatMuted ? 'fa-bell' : 'fa-bell-slash'"></i>
+                {{ chatMuted ? 'Unmute chat' : 'Mute chat' }}
+              </button>
               <button ngbDropdownItem type="button" (click)="closeChat()">
                 <i class="fa-solid fa-xmark"></i>
                 Close chat
@@ -80,13 +132,40 @@
         </div>
       </header>
 
+      <div *ngIf="chatSearchOpen" class="message-search-panel">
+        <div class="message-search-input">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" [value]="messageSearchQuery" (input)="onMessageSearchInput($any($event.target).value)" placeholder="Search messages…" autofocus>
+          <button type="button" (click)="toggleMessageSearch()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="message-search-results" *ngIf="messageSearchResults.length || messageSearchLoading">
+          <div *ngIf="messageSearchLoading" class="search-loading"><span class="loading-spinner"></span> Searching…</div>
+          <button *ngFor="let result of messageSearchResults; trackBy: trackById" type="button" (click)="focusSearchResult(result)">
+            <strong>{{ result.sendBy?.userName || (result.sendBy === userData?._id ? 'You' : 'Message') }}</strong>
+            <span>{{ result.content || result.fileType || 'Attachment' }}</span>
+            <small>{{ formatTime(result.time || result.createdAt) }}</small>
+          </button>
+          <div *ngIf="!messageSearchLoading && !messageSearchResults.length && messageSearchQuery" class="empty-search">No matching messages</div>
+        </div>
+      </div>
+
+      <div *ngIf="pinnedPanelOpen" class="pinned-panel">
+        <div class="pinned-panel-head"><strong>Pinned messages</strong><button type="button" (click)="togglePinnedPanel()"><i class="fa-solid fa-xmark"></i></button></div>
+        <div *ngIf="!pinnedMessages.length" class="pinned-empty">No pinned messages yet.</div>
+        <button *ngFor="let pinned of pinnedMessages; trackBy: trackById" type="button" class="pinned-item" (click)="focusPinnedMessage(pinned)">
+          <i class="fa-solid fa-thumbtack"></i><span>{{ pinned.content || pinned.fileType || 'Attachment' }}</span>
+        </button>
+      </div>
+
       <!-- Messages -->
-      <div #chatContainer [ngClass]="chatItem" class="chat-messages">
+      <div #chatContainer [ngClass]="chatItem" class="chat-messages" (scroll)="onMessagesScroll($event)">
+        <div *ngIf="isLoadingOlder" class="older-loading"><span class="loading-spinner"></span><span>Loading older messages…</span></div>
         <app-message-bubble
           *ngFor="let message of theChat; let i = index; trackBy: trackById"
           [message]="message"
           [userId]="userData?._id"
           [index]="i"
+          [autoDownloadMedia]="userData?.chatPreferences?.mediaAutoDownload !== false"
           [attr.data-message-id]="message?._id"
           (mediaSelected)="openMediaViewer($event.url, $event.type)"
           (action)="onMessageAction($event)">
@@ -118,6 +197,11 @@
           </button>
         </div>
 
+        <div class="replying-banner" *ngIf="replyToMessage">
+          <div><span>Replying to {{ replyToMessage.sendBy?.userName || 'message' }}</span><strong>{{ replyToMessage.content || replyToMessage.fileType || 'Attachment' }}</strong></div>
+          <button type="button" (click)="cancelReply()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
         <div class="composer-field">
           <div *ngIf="!editingMessage && (filePreview || videoUrl)" class="attachment-preview">
             <div class="attachment-preview-content">
@@ -137,8 +221,9 @@
                 </div>
               </ng-container>
             </div>
+            <div *ngIf="mediaUploadProgress !== null" class="upload-progress"><span [style.width.%]="mediaUploadProgress"></span><small>{{ mediaUploadProgress }}%</small></div>
             <div class="attachment-preview-actions">
-              <button type="button" class="preview-send" (click)="sendMessage()">Send</button>
+              <button type="button" class="preview-send" [disabled]="isSendingMessage" (click)="sendMessage()">Send</button>
               <button type="button" class="preview-cancel" (click)="cancelPreview()">Cancel</button>
             </div>
           </div>
@@ -158,7 +243,8 @@
 
           <input type="text"
             [(ngModel)]="message"
-            (keyup.enter)="sendMessage()"
+            (input)="onComposerInput()"
+            (keydown.enter)="onComposerKeydown($event)"
             placeholder="Write a message..."
             autocomplete="off">
         </div>
@@ -213,6 +299,15 @@
           </div>
         </header>
 
+        <section class="conversation-hero-card">
+          <div class="conversation-hero-copy">
+            <span class="section-kicker">YOUR SPACE</span>
+            <h2>Stay in touch, effortlessly.</h2>
+            <p>{{ activeList.length || 0 }} conversations · {{ onlineFriends?.length || 0 }} friends online</p>
+          </div>
+          <div class="conversation-hero-orb"><i class="fa-solid fa-comments"></i></div>
+        </section>
+
         <!-- Stories -->
         <section class="stories-strip" aria-label="Stories">
           <div class="stories-strip-head">
@@ -226,23 +321,31 @@
           </div>
 
           <div class="stories-list">
-            <button type="button" class="story-avatar own-story" (click)="openStoryComposer()">
-              <span class="story-avatar-image" [style.background-image]="'url(' + userData?.profileImage + ')'">
-                <span class="story-plus"><i class="fa-solid fa-plus"></i></span>
-              </span>
-              <span>Your story</span>
-            </button>
-
-            <button *ngFor="let group of stories; let storyIndex = index; trackBy: trackByStoryGroup" type="button" class="story-avatar" (click)="openStoryGroup(storyIndex)">
-              <span class="story-ring" [class.viewed]="!group.hasUnviewed">
-                <span class="story-avatar-image" [style.background-image]="'url(' + group.user?.profileImage + ')'">
+            <!-- My story is always the first story on the left. -->
+            <button type="button" class="story-avatar own-story" (click)="openOwnStoryOrComposer()">
+              <span class="story-ring" [class.viewed]="!!ownStoryGroup && !ownStoryGroup.hasUnviewed">
+                <span class="story-avatar-image" [style.background-image]="'url(' + userData?.profileImage + ')'">
+                  <span *ngIf="!ownStoryGroup?.stories?.length" class="story-plus"><i class="fa-solid fa-plus"></i></span>
                 </span>
-                <small *ngIf="group.user?._id === userData?._id" class="story-view-count">
-                  {{ group.stories?.[0]?.viewerCount || 0 }}
+                <small *ngIf="ownStoryGroup?.stories?.length" class="story-view-count">
+                  {{ ownStoryGroup?.stories?.[0]?.viewerCount || 0 }}
                 </small>
               </span>
-              <span>{{ group.user?.userName || 'Friend' }}</span>
+              <span>{{ ownStoryGroup?.stories?.length ? 'Your story' : 'Add story' }}</span>
             </button>
+
+            <ng-container *ngFor="let group of stories; let storyIndex = index; trackBy: trackByStoryGroup">
+              <button
+                *ngIf="group.user?._id !== userData?._id"
+                type="button"
+                class="story-avatar"
+                (click)="openStoryGroup(storyIndex)">
+                <span class="story-ring" [class.viewed]="!group.hasUnviewed">
+                  <span class="story-avatar-image" [style.background-image]="'url(' + group.user?.profileImage + ')'"></span>
+                </span>
+                <span>{{ group.user?.userName || 'Friend' }}</span>
+              </button>
+            </ng-container>
 
             <div *ngIf="!stories.length" class="stories-empty">Share a moment with your friends.</div>
           </div>
@@ -406,14 +509,15 @@
 <div *ngIf="storyViewerOpen && currentStory" class="story-viewer-overlay" (click)="closeStoryViewer()">
   <section class="story-viewer" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
     <div class="story-viewer-top">
+      <div class="story-progress-track"><span [style.width.%]="storyProgress"></span></div>
       <div class="story-viewer-user">
         <div class="story-viewer-avatar" [style.background-image]="'url(' + currentStoryGroup?.user?.profileImage + ')'" ></div>
         <div>
           <strong>{{ currentStoryGroup?.user?.userName }}</strong>
           <span>{{ currentStory?.createdAt | date:'short' }}</span>
-          <small *ngIf="currentStory?.canSeeViewerCount">
+          <button *ngIf="currentStoryGroup?.user?._id === userData?._id" type="button" class="story-views-trigger" [attr.aria-expanded]="storyViewersOpen" (click)="toggleStoryViewers()">
             <i class="fa-regular fa-eye"></i> {{ currentStory?.viewerCount || 0 }} views
-          </small>
+          </button>
         </div>
       </div>
       <div class="story-viewer-actions">
@@ -422,13 +526,30 @@
       </div>
     </div>
 
-    <div class="story-media-area">
+    <div class="story-media-area" (pointerdown)="holdStory(true)" (pointerup)="holdStory(false)" (pointercancel)="holdStory(false)" (pointerleave)="holdStory(false)">
       <button type="button" class="story-nav story-prev" (click)="previousStory()"><i class="fa-solid fa-chevron-left"></i></button>
       <img *ngIf="currentStory.mediaType === 'image'" [src]="currentStory.mediaUrl" alt="Story">
-      <video *ngIf="currentStory.mediaType === 'video'" [src]="currentStory.mediaUrl" autoplay controls playsinline></video>
+      <video *ngIf="currentStory.mediaType === 'video'" #storyVideo [src]="currentStory.mediaUrl" autoplay controls playsinline (loadedmetadata)="startVideoStoryProgress($event)" (ended)="nextStory()"></video>
       <button type="button" class="story-nav story-next" (click)="nextStory()"><i class="fa-solid fa-chevron-right"></i></button>
     </div>
     <div *ngIf="currentStory.caption" class="story-caption">{{ currentStory.caption }}</div>
+
+    <aside *ngIf="storyViewersOpen && currentStoryGroup?.user?._id === userData?._id" class="story-viewers-panel" (click)="$event.stopPropagation()">
+      <div class="story-viewers-head">
+        <div><span class="section-kicker">STORY INSIGHTS</span><strong>{{ currentStory?.viewerCount || 0 }} viewers</strong></div>
+        <button type="button" (click)="toggleStoryViewers()" aria-label="Close viewers"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div *ngIf="!currentStoryViewers.length" class="story-viewers-empty">No viewers yet.</div>
+      <div *ngFor="let viewer of currentStoryViewers" class="story-viewer-row">
+        <span class="story-viewer-row-avatar" [style.background-image]="'url(' + (viewer.user?.profileImage || '') + ')'"> </span>
+        <div><strong>{{ viewer.user?.userName || 'Viewer' }}</strong><small>{{ viewer.viewedAt | date:'short' }}</small></div>
+        <span class="viewer-reaction">{{ formatStoryViewerReaction(viewer.reaction) }}</span>
+      </div>
+    </aside>
+
+    <div class="story-reactions">
+      <button type="button" *ngFor="let emoji of ['❤️','😂','🔥','😍','👏']" [class.active]="currentStory.myReaction === emoji" (click)="reactToCurrentStory(emoji)">{{emoji}}</button>
+    </div>
   </section>
 </div>
 

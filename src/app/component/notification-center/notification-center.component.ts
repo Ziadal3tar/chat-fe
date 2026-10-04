@@ -258,6 +258,12 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
         return 'fa-solid fa-user-minus';
       case 'friend_removed':
         return 'fa-solid fa-user-minus';
+      case 'story_view':
+        return 'fa-regular fa-eye';
+      case 'story_reaction':
+        return 'fa-solid fa-heart';
+      case 'call_incoming':
+        return 'fa-solid fa-phone';
       case 'plan_reminder':
       case 'scheduled_message':
       case 'scheduled_message_sent':

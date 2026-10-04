@@ -283,6 +283,11 @@ export class PlansComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.saving = false;
+          this.successMessage = this.scheduled
+            ? `Scheduled message created for ${this.selectedFriend?.userName || 'your friend'}.`
+            : this.send
+              ? `Reminder created for ${this.selectedFriend?.userName || 'your friend'}.`
+              : `Reply reminder created for ${this.selectedFriend?.userName || 'your friend'}.`;
           this.resetComposer();
           this.loadPlans();
         },
@@ -340,7 +345,7 @@ export class PlansComponent implements OnInit, OnDestroy {
           event.action === "reply_reminder"
             ? `It is time to reply to ${event.targetUserName}.`
             : `It is time to send a message to ${event.targetUserName}.`;
-
+        setTimeout(() => { if (this.liveNotice) this.liveNotice = ""; }, 7000);
         this.loadPlans();
       });
 
@@ -354,9 +359,19 @@ export class PlansComponent implements OnInit, OnDestroy {
           event.action === "scheduled_message"
             ? `Your scheduled message was sent to ${event.targetUserName}.`
             : `Your reminder for ${event.targetUserName} is complete.`;
-
+        setTimeout(() => { if (this.liveNotice) this.liveNotice = ""; }, 7000);
         this.loadPlans();
       });
+  }
+
+  openPlanChat(item: any): void {
+    const friendId = item?.target?._id;
+    if (!friendId) return;
+    this.router.navigate(['/home'], { queryParams: { friend: friendId } });
+  }
+
+  trackByPlan(_index: number, plan: any): string {
+    return plan?._id || String(_index);
   }
 
   private resetComposer(): void {

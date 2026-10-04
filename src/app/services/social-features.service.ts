@@ -40,6 +40,31 @@ export class SocialFeaturesService {
     );
   }
 
+
+  searchMessages(chatId: string, query: string): Observable<any> {
+    return this.http.get(`${this.chatUrl}/search?chatId=${encodeURIComponent(chatId)}&q=${encodeURIComponent(query)}&limit=30`, this.authOptions());
+  }
+
+  toggleReaction(messageId: string, emoji: string): Observable<any> {
+    return this.http.patch(`${this.chatUrl}/messages/${messageId}/reaction`, { emoji }, this.authOptions());
+  }
+
+  toggleMessagePin(messageId: string): Observable<any> {
+    return this.http.patch(`${this.chatUrl}/messages/${messageId}/pin`, {}, this.authOptions());
+  }
+
+  toggleChatPin(chatId: string): Observable<any> {
+    return this.http.patch(`${this.chatUrl}/chats/${chatId}/pin`, {}, this.authOptions());
+  }
+
+  toggleChatMute(chatId: string): Observable<any> {
+    return this.http.patch(`${this.chatUrl}/chats/${chatId}/mute`, {}, this.authOptions());
+  }
+
+  getPinnedMessages(chatId: string): Observable<any> {
+    return this.http.get(`${this.chatUrl}/pinned?chatId=${encodeURIComponent(chatId)}`, this.authOptions());
+  }
+
   searchPlanFriends(search: string): Observable<any> {
     const query = encodeURIComponent(search.trim());
     return this.http.get(

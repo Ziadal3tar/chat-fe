@@ -29,6 +29,12 @@ export class AllSettingComponent implements OnInit, OnDestroy {
   actionLoadingId: string | null = null;
   successMessage = '';
   errorMessage = '';
+  activeSessions: any[] = [];
+  loadingSessions = false;
+  emailDraft = '';
+  currentPassword = '';
+  newPassword = '';
+  darkMode = false;
 
   confirmVisible = false;
   confirmTitle = '';
@@ -42,10 +48,14 @@ export class AllSettingComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.darkMode = localStorage.getItem('chat-dark-mode') === '1';
+    document.body.classList.toggle('dark-theme', this.darkMode);
+
     this.userService.user$
       .pipe(takeUntil(this.destroy$))
       .subscribe((data: any) => {
         this.userData = data;
+        this.emailDraft = data?.email || '';
         this.blockedUsers = data?.blockedUsers || [];
         this.chatBackground = data?.chatPreferences?.chatBackground || 'aurora';
       });
@@ -54,6 +64,72 @@ export class AllSettingComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  updateChatPreference(key: string, value: boolean): void {
+    this.clearMessages();
+    this.userService.updatePreferences({ [key]: value }).subscribe({
+      next: (response: any) => { if (response?.user) this.userService.updateUser(response.user); this.successMessage = 'Chat preference saved.'; },
+      error: (error) => this.errorMessage = error?.error?.message || 'Could not save chat preference.',
+    });
+  }
+
+  updatePrivacyPreference(key: string, value: any): void {
+    this.clearMessages();
+    this.userService.updatePreferences({ privacyPreferences: { [key]: value } }).subscribe({
+      next: (response: any) => { if (response?.user) this.userService.updateUser(response.user); this.successMessage = 'Privacy preference saved.'; },
+      error: (error) => this.errorMessage = error?.error?.message || 'Could not save privacy preference.',
+    });
+  }
+
+  updateNotificationPreference(key: string, value: boolean): void {
+    this.clearMessages();
+    this.userService.updatePreferences({ notificationPreferences: { [key]: value } }).subscribe({
+      next: (response: any) => { if (response?.user) this.userService.updateUser(response.user); this.successMessage = 'Notification preference saved.'; },
+      error: (error) => this.errorMessage = error?.error?.message || 'Could not save notification preference.',
+    });
+  }
+
+  saveEmail(): void {
+    const email = this.emailDraft.trim();
+    this.clearMessages();
+    this.userService.updateEmail(email).subscribe({
+      next: (response: any) => { if (response?.user) this.userService.updateUser(response.user); this.successMessage = 'Email updated successfully.'; },
+      error: (error) => this.errorMessage = error?.error?.message || 'Could not update email.',
+    });
+  }
+
+  changePassword(): void {
+    this.clearMessages();
+    if (!this.currentPassword || this.newPassword.length < 6) { this.errorMessage = 'Enter your current password and a new password of at least 6 characters.'; return; }
+    this.userService.changePassword(this.currentPassword, this.newPassword).subscribe({
+      next: () => { this.successMessage = 'Password changed. Sign in again on this device.'; this.currentPassword = ''; this.newPassword = ''; setTimeout(() => this.logout(), 900); },
+      error: (error) => this.errorMessage = error?.error?.message || 'Could not change password.',
+    });
+  }
+
+  loadSessions(): void {
+    this.loadingSessions = true;
+    this.userService.getSessions().subscribe({
+      next: (response: any) => { this.activeSessions = response?.sessions || []; this.loadingSessions = false; },
+      error: () => { this.activeSessions = []; this.loadingSessions = false; },
+    });
+  }
+
+  revokeSession(sessionId: string): void {
+    this.userService.revokeSession(sessionId).subscribe({ next: () => this.loadSessions() });
+  }
+
+  logoutAllDevices(): void {
+    this.openConfirmation('Sign out everywhere?', 'This will revoke every active session, including this device.', () => {
+      this.userService.logoutAllDevices().subscribe({ next: () => this.logout() });
+    });
+  }
+
+  toggleDarkMode(): void {
+    this.darkMode = !this.darkMode;
+    document.body.classList.toggle('dark-theme', this.darkMode);
+    localStorage.setItem('chat-dark-mode', this.darkMode ? '1' : '0');
   }
 
   goHome(): void {

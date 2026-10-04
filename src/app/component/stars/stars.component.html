@@ -71,18 +71,33 @@
 
       <div class="star-copy">
         <div class="name-row">
-          <strong>{{item.name}}</strong>
+          <div class="saved-person">
+            <strong>{{item.name || item.friendName || 'Friend'}}</strong>
+            <small>{{ item.direction || 'Saved message' }}</small>
+          </div>
           <span><i class="fa-solid fa-star"></i> Saved</span>
         </div>
 
-        <p class="star-message-text">{{item.text}}</p>
+        <div class="message-route" *ngIf="item.senderName || item.recipientName">
+          <span><i class="fa-solid fa-user"></i> {{ item.senderName || 'You' }}</span>
+          <i class="fa-solid fa-arrow-right"></i>
+          <span><i class="fa-solid fa-user"></i> {{ item.recipientName || item.friendName || 'Friend' }}</span>
+        </div>
+
+        <button *ngIf="item.replyPreview" type="button" class="star-reply-preview" (click)="$event.stopPropagation(); openInChat(item)">
+          <i class="fa-solid fa-reply"></i>
+          <span>{{ item.replyPreview }}</span>
+        </button>
+
+        <p class="star-message-text">{{item.text || 'Saved message'}}</p>
 
         <div class="item-meta">
           <span>
-            <i class="fa-solid fa-bookmark"></i>
-            {{item.date || 'Saved message'}} <ng-container *ngIf="item.time">· {{item.time}}</ng-container>
+            <i class="fa-regular fa-clock"></i>
+            {{item.date || (item.createdAt | date:'mediumDate') || 'Saved message'}} <ng-container *ngIf="item.time">· {{item.time}}</ng-container>
           </span>
-          <span *ngIf="item.fileType" class="content-type">{{item.fileType}}</span>
+          <span *ngIf="item.fileType" class="content-type"><i class="fa-solid fa-paperclip"></i> {{item.fileType}}</span>
+          <span *ngIf="item.isRead && item.sendBy === item.friendId" class="read-state"><i class="fa-solid fa-check-double"></i> Read</span>
           <span class="open-chat-hint"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open chat</span>
         </div>
       </div>

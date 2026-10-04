@@ -17,11 +17,11 @@
 .conversation-bottomline p { min-width:0; flex:1; margin:4px 0 0; overflow:hidden; color:#8b95a6; font-size:.75rem; text-overflow:ellipsis; white-space:nowrap; }
 .conversation-bottomline i { margin-right:4px; }
 .conversation-arrow { color:#c3cad5; font-size:.62rem; }
-.unread-count { min-width:22px; height:22px; padding:0 7px; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; background:#3267e8; color:#fff; font-size:.68rem; font-weight:700; }
+.unread-count { min-width:22px; height:22px; padding:0 7px; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; background:#3eab90; color:#fff; font-size:.68rem; font-weight:700; }
 
 .conversation-profile-btn { flex:0 0 32px; width:32px; height:32px; border:1px solid #e2e8f0; border-radius:10px; background:#fff; color:#64748b; cursor:pointer; opacity:0; transition:.2s ease; }
 .conversation-item:hover .conversation-profile-btn { opacity:1; }
-.conversation-profile-btn:hover { color:#4f46e5; background:#eef2ff; }
+.conversation-profile-btn:hover { color:#3eab90 ; background:#eef2ff; }
 @media (max-width:700px){ .conversation-profile-btn { opacity:1; } }
 
 
@@ -43,9 +43,12 @@
 .conversation-item.has-unread { background: #f5f3ff; }
 .conversation-profile-btn { flex: 0 0 auto; opacity: 0; transition: opacity .18s ease, background .18s ease; }
 .conversation-item:hover .conversation-profile-btn, .conversation-item:focus-within .conversation-profile-btn { opacity: 1; }
-.conversation-profile-btn:hover { background: #ede9fe; color: #4f46e5; }
+.conversation-profile-btn:hover { background: #ede9fe; color: #3eab90 ; }
 .avatar-status { box-shadow: 0 0 0 3px #fff; }
 @media (max-width: 640px) { .conversation-profile-btn { opacity: 1; } }
 
 
 .deleted-preview { color:#9aa4b2 !important; font-style:italic; }
+
+.conversation-topline strong i { margin-left:5px; font-size:9px; color:#3eab90 ; }
+.conversation-topline strong i.fa-bell-slash { color:#94a3b8; }

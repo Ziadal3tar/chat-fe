@@ -25,6 +25,20 @@
           {{ isStarred ? 'Unstar' : 'Star message' }}
         </button>
 
+        <button type="button" (click)="chooseAction('reply')">
+          <i class="fa-solid fa-reply"></i>
+          Reply
+        </button>
+
+        <button type="button" (click)="chooseAction(message?.isPinned ? 'unpin' : 'pin')">
+          <i class="fa-solid" [ngClass]="message?.isPinned ? 'fa-thumbtack-slash' : 'fa-thumbtack'"></i>
+          {{ message?.isPinned ? 'Unpin' : 'Pin message' }}
+        </button>
+
+        <div class="reaction-row">
+          <button *ngFor="let emoji of ['❤️','😂','👍','🔥','😮']" type="button" class="reaction-choice" (click)="chooseReaction(emoji)">{{ emoji }}</button>
+        </div>
+
         <span *ngIf="isOwn && !canEdit && !canDelete && !isDeleted" class="message-window-note">
           Editing &amp; deletion are available for 30 minutes.
         </span>
@@ -32,6 +46,12 @@
     </div>
 
     <div class="message-content-shell">
+      <button *ngIf="!isDeleted && message?.replyTo" type="button" class="reply-preview" (click)="$event.stopPropagation(); chooseAction('focusReply')" title="Jump to replied message">
+        <span>{{ message.replyTo.sendBy?.userName || 'Reply' }}</span>
+        <p>{{ message.replyTo.content || (message.replyTo.fileType === 'image' ? 'Image' : (message.replyTo.fileType === 'video' ? 'Video' : (message.replyTo.fileType === 'audio' ? 'Voice message' : 'Attachment'))) }}</p>
+        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+      </button>
+
       <p *ngIf="!isDeleted && message?.content"
          [ngClass]="{ 'message-own': isOwn, 'message-other': !isOwn }"
          class="message-bubble">
@@ -44,8 +64,9 @@
         This message was deleted
       </p>
 
-      <button *ngIf="!isDeleted && message?.fileType === 'image'" type="button" class="message-media-btn" (click)="openMedia('image')">
-        <img [src]="message.fileUrl" class="message-image" alt="Shared image">
+      <button *ngIf="!isDeleted && message?.fileType === 'image'" type="button" class="message-media-btn" (click)="canAutoLoadMedia ? openMedia('image') : revealMedia()">
+        <img *ngIf="canAutoLoadMedia" [src]="message.fileUrl" class="message-image" alt="Shared image" loading="lazy" decoding="async">
+        <span *ngIf="!canAutoLoadMedia" class="media-download-placeholder"><i class="fa-solid fa-cloud-arrow-down"></i><strong>Tap to load image</strong><small>{{ message?.fileSize ? (message.fileSize / 1024 / 1024 | number:'1.1-1') + ' MB' : 'Media' }}</small></span>
       </button>
 
       <div *ngIf="!isDeleted && message?.fileType === 'pdf'" class="pdf-message">
@@ -56,17 +77,31 @@
         </div>
       </div>
 
-      <button *ngIf="!isDeleted && message?.fileType === 'video'" type="button" class="message-media-btn video-message-btn" (click)="openMedia('video')">
-        <video [src]="message.fileUrl" controls class="message-video"></video>
+      <button *ngIf="!isDeleted && message?.fileType === 'video'" type="button" class="message-media-btn video-message-btn" (click)="canAutoLoadMedia ? openMedia('video') : revealMedia()">
+        <video *ngIf="canAutoLoadMedia" [src]="message.fileUrl" controls class="message-video" preload="metadata" playsinline></video>
+        <span *ngIf="!canAutoLoadMedia" class="media-download-placeholder"><i class="fa-solid fa-cloud-arrow-down"></i><strong>Tap to load video</strong><small>Media download is off</small></span>
       </button>
 
-      <div *ngIf="!isDeleted && message?.fileType === 'audio'" class="audio-message">
-        <i class="fa-solid fa-microphone"></i>
-        <audio [src]="message.fileUrl" controls preload="metadata"></audio>
+      <div *ngIf="!isDeleted && message?.fileType === 'audio'" class="audio-message premium-voice">
+        <ng-container *ngIf="canAutoLoadMedia; else voiceLocked">
+          <button type="button" class="voice-play" (click)="toggleAudio()" [attr.aria-label]="audioPlaying ? 'Pause voice message' : 'Play voice message'"><i class="fa-solid" [ngClass]="audioPlaying ? 'fa-pause' : 'fa-play'"></i></button>
+          <div class="voice-track-wrap">
+            <div class="voice-wave" (click)="seekAudio($event)"><span *ngFor="let bar of [1,2,3,4,5,6,7,8,9,10,11,12]" [class.active]="audioProgress >= bar / 12 * 100"></span></div>
+            <div class="voice-meta"><span>{{ formatDuration(audioPlaying ? (currentAudioTime) : audioDuration) }}</span><i class="fa-solid fa-microphone"></i></div>
+          </div>
+          <audio #voiceAudio [src]="message.fileUrl" preload="metadata" (loadedmetadata)="onAudioLoaded()" (timeupdate)="onAudioTime()" (ended)="onAudioEnded()"></audio>
+        </ng-container>
+        <ng-template #voiceLocked>
+          <button type="button" class="voice-load-btn" (click)="revealMedia()"><i class="fa-solid fa-cloud-arrow-down"></i><span>Load voice message</span></button>
+        </ng-template>
       </div>
     </div>
 
-    <div class="message-meta">
+    <div *ngIf="message?.reactionCounts && (message.reactionCounts | keyvalue).length && !isDeleted" class="message-reactions">
+      <button *ngFor="let reaction of message.reactionCounts | keyvalue" type="button" [class.mine]="message.myReaction === reaction.key" (click)="chooseReaction(reaction.key)">{{ reaction.key }} <small>{{ reaction.value }}</small></button>
+    </div>
+
+    <div class="message-meta" *ngIf="!isDeleted">
       <span *ngIf="isStarred" class="starred-mark" title="Starred">
         <i class="fa-solid fa-star"></i>
       </span>

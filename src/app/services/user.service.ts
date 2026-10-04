@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, finalize, shareReplay } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { SocketService } from './socket.service';
 
@@ -12,6 +12,7 @@ export class UserService {
 
   private readonly userSubject = new BehaviorSubject<any>(null);
   readonly user$ = this.userSubject.asObservable();
+  private userRequest$: any = null;
 
   constructor(
     private http: HttpClient,
@@ -31,7 +32,21 @@ export class UserService {
   }
 
   updateUser(user: any): void {
-    this.userSubject.next(user);
+    const previous = this.userSubject.value;
+    if (!user) {
+      this.userSubject.next(user);
+      return;
+    }
+    this.userSubject.next({
+      ...previous,
+      ...user,
+      friends: user.friends ?? previous?.friends ?? [],
+      chats: user.chats ?? previous?.chats ?? [],
+      blockedUsers: user.blockedUsers ?? previous?.blockedUsers ?? [],
+      chatPreferences: { ...(previous?.chatPreferences || {}), ...(user.chatPreferences || {}) },
+      privacyPreferences: { ...(previous?.privacyPreferences || {}), ...(user.privacyPreferences || {}) },
+      notificationPreferences: { ...(previous?.notificationPreferences || {}), ...(user.notificationPreferences || {}) },
+    });
   }
 
   register(user: any) {
@@ -43,29 +58,27 @@ export class UserService {
   }
 
   getUserData(): void {
-    this.http
-      .get(`${this.baseUrl}/auth/me`, {
-        headers: this.authHeaders(),
-      })
-      .subscribe({
-        next: (data: any) => {
-          this.userSubject.next(data.user);
-        },
-        error: (err) => {
-          const message = err?.error?.message || '';
+    if (this.userRequest$) return;
 
-          if (
-            [
-              'User not found',
-              'Invalid token',
-              'Token expired',
-              'Authentication required',
-            ].includes(message)
-          ) {
-            this.logout();
-          }
-        },
-      });
+    this.userRequest$ = this.http
+      .get(`${this.baseUrl}/auth/me`, { headers: this.authHeaders() })
+      .pipe(shareReplay(1), finalize(() => { this.userRequest$ = null; }));
+
+    this.userRequest$.subscribe({
+      next: (data: any) => this.updateUser(data.user),
+      error: (err: any) => {
+        const message = err?.error?.message || '';
+        console.log(message);
+
+        if (['User not found', 'Invalid token', 'Token expired', 'Authentication required', 'Session has been revoked', 'Session is no longer active','User associated with token no longer exists'].includes(message)){
+          this.logout();
+        }
+
+
+
+          // this.logout();
+      },
+    });
   }
 
   searchUser(data: { name: string }) {
@@ -83,6 +96,14 @@ export class UserService {
   initChat(data: FormData) {
     return this.http.post(`${this.baseUrl}/chat/send`, data, {
       headers: this.authHeaders(),
+    });
+  }
+
+  initChatWithProgress(data: FormData) {
+    return this.http.post(`${this.baseUrl}/chat/send`, data, {
+      headers: this.authHeaders(),
+      observe: 'events',
+      reportProgress: true,
     });
   }
 
@@ -133,11 +154,31 @@ export class UserService {
 
 
   updateChatPreferences(chatBackground: string) {
-    return this.http.patch(
-      `${this.baseUrl}/user/preferences`,
-      { chatBackground },
-      { headers: this.authHeaders() }
-    );
+    return this.updatePreferences({ chatBackground });
+  }
+
+  updatePreferences(payload: any) {
+    return this.http.patch(`${this.baseUrl}/user/preferences`, payload, { headers: this.authHeaders() });
+  }
+
+  changePassword(currentPassword: string, newPassword: string) {
+    return this.http.patch(`${this.baseUrl}/auth/password`, { currentPassword, newPassword }, { headers: this.authHeaders() });
+  }
+
+  updateEmail(email: string) {
+    return this.http.patch(`${this.baseUrl}/auth/email`, { email }, { headers: this.authHeaders() });
+  }
+
+  getSessions() {
+    return this.http.get(`${this.baseUrl}/auth/sessions`, { headers: this.authHeaders() });
+  }
+
+  revokeSession(sessionId: string) {
+    return this.http.delete(`${this.baseUrl}/auth/sessions/${sessionId}`, { headers: this.authHeaders() });
+  }
+
+  logoutAllDevices() {
+    return this.http.post(`${this.baseUrl}/auth/logout-all`, {}, { headers: this.authHeaders() });
   }
 
   updateProfile(formData: FormData) {

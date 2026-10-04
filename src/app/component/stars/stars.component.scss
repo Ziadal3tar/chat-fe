@@ -525,9 +525,20 @@
 }
 .open-chat-hint {
   margin-left: auto;
-  color: #4f46e5;
+  color: #3eab90 ;
   font-weight: 700;
 }
 @media (max-width: 620px) {
   .open-chat-hint { width: 100%; margin-left: 0; }
 }
+
+
+/* Detailed star metadata */
+.saved-person { display:flex; flex-direction:column; min-width:0; }
+.saved-person small { margin-top:2px; color:#94a3b8; font-size:10px; }
+.message-route { display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin:7px 0 5px; color:#64748b; font-size:10px; }
+.message-route i { color:#a0aec0; font-size:9px; }
+.star-reply-preview { width:100%; display:flex; align-items:center; gap:7px; margin:5px 0 7px; padding:7px 9px; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; color:#64748b; text-align:left; cursor:pointer; }
+.star-reply-preview span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.read-state { color:#3eab90 ; }
+@media (max-width:640px) { .message-route { font-size:9px; } .star-reply-preview { font-size:10px; } }

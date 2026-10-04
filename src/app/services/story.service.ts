@@ -36,4 +36,8 @@ export class StoryService {
   deleteStory(storyId: string): Observable<any> {
     return this.http.delete(`${this.baseUrl}/${storyId}`, this.options());
   }
+
+  reactToStory(storyId: string, emoji: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/${storyId}/reaction`, { emoji }, this.options());
+  }
 }

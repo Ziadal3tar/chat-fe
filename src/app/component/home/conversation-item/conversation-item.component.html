@@ -1,11 +1,11 @@
 <div class="conversation-item" [class.has-unread]="item?.unreadCount > 0" (click)="select()" role="button" tabindex="0" (keydown.enter)="select()" (keydown.space)="$event.preventDefault(); select()">
-  <div class="conversation-avatar" [style.background-image]="'url(' + profileImage + ')'">
+  <div class="conversation-avatar" [style.background-image]="'url(' + profileImage + ')'" [attr.aria-label]="userName + ' avatar'">
     <span *ngIf="isOnline" class="avatar-status"></span>
   </div>
 
   <div class="conversation-content">
     <div class="conversation-topline">
-      <strong>{{ userName }}</strong>
+      <strong>{{ userName }} <i *ngIf="item?.isPinned" class="fa-solid fa-thumbtack" title="Pinned"></i><i *ngIf="item?.isMuted" class="fa-solid fa-bell-slash" title="Muted"></i></strong>
       <span *ngIf="isChat">{{ item?.lastMessage?.date }} {{ item?.lastMessage?.time }}</span>
     </div>
 

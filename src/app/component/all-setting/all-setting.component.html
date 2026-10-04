@@ -384,6 +384,90 @@
 
   </div>
 
+  <section class="advanced-settings-grid">
+
+    <section class="settings-card">
+      <div class="card-topline"><div class="heading-icon"><i class="fa-solid fa-at"></i></div><span class="section-label">04</span></div>
+      <div class="card-heading"><div><h2>Email & security</h2><p>Keep your account credentials current.</p></div></div>
+
+      <div class="advanced-field">
+        <label>Email</label>
+        <div class="inline-field"><input type="email" [(ngModel)]="emailDraft" placeholder="you@example.com"><button type="button" class="primary-button" (click)="saveEmail()">Save</button></div>
+      </div>
+
+      <div class="advanced-field">
+        <label>Change password</label>
+        <input type="password" [(ngModel)]="currentPassword" placeholder="Current password">
+        <input type="password" [(ngModel)]="newPassword" placeholder="New password (min 6 characters)">
+        <button type="button" class="secondary-button" (click)="changePassword()">Update password</button>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-topline"><div class="heading-icon purple"><i class="fa-solid fa-user-shield"></i></div><span class="section-label">05</span></div>
+      <div class="card-heading"><div><h2>Privacy</h2><p>Choose how presence, read receipts and stories work.</p></div></div>
+
+      <div class="advanced-option">
+        <span><b>Last seen</b><small>Who can see your last active time</small></span>
+        <select [ngModel]="userData?.privacyPreferences?.lastSeenVisibility || 'everyone'" (ngModelChange)="updatePrivacyPreference('lastSeenVisibility',$event)">
+          <option value="everyone">Everyone</option><option value="friends">Friends</option><option value="nobody">Nobody</option>
+        </select>
+      </div>
+      <div class="advanced-option">
+        <span><b>Online status</b><small>Who can see when you're online</small></span>
+        <select [ngModel]="userData?.privacyPreferences?.onlineStatusVisibility || 'everyone'" (ngModelChange)="updatePrivacyPreference('onlineStatusVisibility',$event)">
+          <option value="everyone">Everyone</option><option value="friends">Friends</option><option value="nobody">Nobody</option>
+        </select>
+      </div>
+      <div class="advanced-option"><span><b>Read receipts</b><small>Show when messages are read</small></span><button type="button" class="switch" [class.on]="userData?.privacyPreferences?.readReceipts !== false" (click)="updatePrivacyPreference('readReceipts', userData?.privacyPreferences?.readReceipts === false)"><span></span></button></div>
+      <div class="advanced-option">
+        <span><b>Story visibility</b><small>Who can view your stories</small></span>
+        <select [ngModel]="userData?.privacyPreferences?.storyVisibility || 'friends'" (ngModelChange)="updatePrivacyPreference('storyVisibility',$event)"><option value="friends">Friends</option><option value="everyone">Everyone</option></select>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-topline"><div class="heading-icon amber"><i class="fa-solid fa-message"></i></div><span class="section-label">06</span></div>
+      <div class="card-heading"><div><h2>Chat behavior</h2><p>Control the composer and media behavior.</p></div></div>
+      <div class="advanced-option"><span><b>Enter to send</b><small>Press Enter to send a message</small></span><button type="button" class="switch" [class.on]="userData?.chatPreferences?.enterToSend !== false" (click)="updateChatPreference('enterToSend', userData?.chatPreferences?.enterToSend === false)"><span></span></button></div>
+      <div class="advanced-option"><span><b>Chat notifications</b><small>Allow in-app message alerts</small></span><button type="button" class="switch" [class.on]="userData?.chatPreferences?.notificationsEnabled !== false" (click)="updateChatPreference('notificationsEnabled', userData?.chatPreferences?.notificationsEnabled === false)"><span></span></button></div>
+      <div class="advanced-option"><span><b>Media auto-download</b><small>Load media automatically in messages</small></span><button type="button" class="switch" [class.on]="userData?.chatPreferences?.mediaAutoDownload !== false" (click)="updateChatPreference('mediaAutoDownload', userData?.chatPreferences?.mediaAutoDownload === false)"><span></span></button></div>
+      <div class="advanced-option"><span><b>Dark mode</b><small>Use the darker interface</small></span><button type="button" class="switch" [class.on]="darkMode" (click)="toggleDarkMode()"><span></span></button></div>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-topline"><div class="heading-icon green"><i class="fa-solid fa-bell"></i></div><span class="section-label">07</span></div>
+      <div class="card-heading"><div><h2>Notifications</h2><p>Choose what reaches your notification center.</p></div></div>
+      <div class="advanced-option" *ngFor="let item of [
+        {key:'messages',label:'Messages',desc:'New incoming messages'},
+        {key:'friendRequests',label:'Friend requests',desc:'New connection requests'},
+        {key:'stories',label:'Stories',desc:'Story activity and views'},
+        {key:'calls',label:'Calls',desc:'Incoming voice and video calls'},
+        {key:'scheduledMessages',label:'Scheduled messages',desc:'Plans and scheduled delivery'}
+      ]"><span><b>{{item.label}}</b><small>{{item.desc}}</small></span><button type="button" class="switch" [class.on]="userData?.notificationPreferences?.[item.key] !== false" (click)="updateNotificationPreference(item.key, userData?.notificationPreferences?.[item.key] === false)"><span></span></button></div>
+    </section>
+
+    <section class="settings-card full-width">
+      <div class="card-topline"><div class="heading-icon rose-tone"><i class="fa-solid fa-laptop"></i></div><span class="section-label">08</span></div>
+      <div class="card-heading"><div><h2>Active sessions</h2><p>Review where your account is signed in.</p></div><button type="button" class="secondary-button" (click)="loadSessions()">Refresh</button></div>
+      <div *ngIf="loadingSessions" class="mini-empty">Loading sessions…</div>
+      <div *ngIf="!loadingSessions && !activeSessions.length" class="mini-empty">No active sessions found.</div>
+      <div class="session-list" *ngIf="!loadingSessions && activeSessions.length">
+        <div class="session-row" *ngFor="let session of activeSessions">
+          <span class="session-icon"><i class="fa-solid fa-mobile-screen-button"></i></span>
+          <div><b>{{ session.current ? 'This device' : 'Signed-in device' }}</b><small>{{ session.userAgent || 'Browser' }} · {{ session.ipAddress || 'Unknown IP' }}</small><small>Last seen {{ session.lastSeenAt | date:'medium' }}</small></div>
+          <button *ngIf="!session.current" type="button" class="ghost-danger" (click)="revokeSession(session._id)">Revoke</button>
+        </div>
+      </div>
+      <div class="security-actions"><button type="button" class="danger-button" (click)="logoutAllDevices()">Logout all devices</button></div>
+    </section>
+
+    <div class="settings-feedback full-width" *ngIf="successMessage || errorMessage">
+      <div *ngIf="successMessage" class="success-feedback"><i class="fa-solid fa-circle-check"></i>{{successMessage}}</div>
+      <div *ngIf="errorMessage" class="error-feedback"><i class="fa-solid fa-circle-exclamation"></i>{{errorMessage}}</div>
+    </div>
+  </section>
+
   <section class="danger-zone">
 
     <div class="danger-copy-wrap">
