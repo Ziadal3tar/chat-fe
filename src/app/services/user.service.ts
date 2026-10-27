@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, finalize, shareReplay } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { SocketService } from './socket.service';
+import { Router } from '@angular/router';
 
 @Injectable({
   providedIn: 'root',
@@ -16,7 +17,8 @@ export class UserService {
 
   constructor(
     private http: HttpClient,
-    private socketService: SocketService
+    private socketService: SocketService,
+    private router: Router
   ) {
     const token = localStorage.getItem('token');
     if (token) {
@@ -70,7 +72,7 @@ export class UserService {
         const message = err?.error?.message || '';
         console.log(message);
 
-        if (['User not found', 'Invalid token', 'Token expired', 'Authentication required', 'Session has been revoked', 'Session is no longer active','User associated with token no longer exists'].includes(message)){
+        if (['User not found', 'Invalid token', 'Token expired', 'Authentication required', 'Session has been revoked', 'Session is no longer active','User associated with token no longer exists','Token is invalid'].includes(message)){
           this.logout();
         }
 
@@ -191,5 +193,6 @@ export class UserService {
     this.socketService.disconnect();
     localStorage.removeItem('token');
     this.userSubject.next(null);
+    this.router.navigate(['/login']);
   }
 }

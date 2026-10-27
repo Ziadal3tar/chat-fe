@@ -192,6 +192,7 @@ activeList: any[] = [];
       .pipe(takeUntil(this.destroy$), filter(Boolean), take(1))
       .subscribe((data: any) => {
         this.userData = data;
+// console.log(data);
 
         this.chatBackground = data?.chatPreferences?.chatBackground || 'aurora';
         this.loadOnlineFriends();
